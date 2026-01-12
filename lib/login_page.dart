@@ -49,7 +49,10 @@ class _LoginPageState extends State<LoginPage> {
               await _secureStorage.write(key: 'sid', value: sid);
             }
           }
-          Get.off(() => const HomePage());
+          Get.off(() => HomePage(
+                fullName: response.data['full_name'],
+                email: _emailController.text,
+              ));
         } else {
           Get.snackbar(
             'Login Failed',
