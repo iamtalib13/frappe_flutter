@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 
 class CrmPage extends StatefulWidget {
   const CrmPage({super.key});
@@ -11,11 +12,11 @@ class _CrmPageState extends State<CrmPage> {
   int _selectedIndex = 0;
   final PageController _pageController = PageController();
 
-  final List<String> _titles = ['Appointment', 'Lead', 'Report'];
+  final List<String> _titles = ['Lead', 'Appointment', 'Report'];
 
   final List<List<String>> _filters = [
-    ['All (0)', 'Today (0)', 'Due (0)', 'Upcoming (0)', 'Open (0)', 'Closed (0)'],
-    ['All (35)', 'Lead (22)', 'Converted (4)', 'Follow Up(5)', 'Not Interested (4)'],
+    ['All (35)', 'Lead (22)', 'Converted (4)', 'Follow Up(5)', 'Not Interested (4)'], // Lead filters
+    ['All (0)', 'Today (0)', 'Due (0)', 'Upcoming (0)', 'Open (0)', 'Closed (0)'], // Appointment filters
     [], // No filters for Report tab yet
   ];
 
@@ -74,10 +75,30 @@ class _CrmPageState extends State<CrmPage> {
                 });
               },
               children: [
-                _buildTabPage('Appointment'),
                 _buildTabPage('Lead'),
+                _buildTabPage('Appointment'),
                 _buildTabPage('Report'),
               ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  // TODO: Implement new lead creation logic
+                  Get.snackbar('New Lead', 'Add New Lead functionality here');
+                },
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: const Text(
+                  'New Lead',
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF006767),
+                ),
+              ),
             ),
           ),
         ],
@@ -85,12 +106,12 @@ class _CrmPageState extends State<CrmPage> {
       bottomNavigationBar: BottomNavigationBar(
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'Appointment',
-          ),
-          BottomNavigationBarItem(
             icon: Icon(Icons.person),
             label: 'Lead',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.calendar_today),
+            label: 'Appointment',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
