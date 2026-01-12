@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'login_page.dart';
+import 'reset_password_page.dart';
 
 class HomePage extends StatefulWidget {
   final String fullName;
@@ -64,7 +65,9 @@ class _HomePageState extends State<HomePage> {
     return Card(
       child: InkWell(
         onTap: () {
-          // TODO: Implement card tap functionality
+          if (title == 'Reset Password') {
+            Get.to(() => const ResetPasswordPage());
+          }
         },
         child: SizedBox(
           width: 150,
