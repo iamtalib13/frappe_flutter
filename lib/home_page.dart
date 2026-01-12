@@ -47,10 +47,36 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: const Center(
-        child: Text(
-          'You are logged in',
-          style: TextStyle(fontSize: 24.0),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          children: [
+            _buildCard('Reset Password', Icons.lock_reset),
+            const SizedBox(width: 8.0),
+            _buildCard('CRM', Icons.business),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCard(String title, IconData icon) {
+    return Card(
+      child: InkWell(
+        onTap: () {
+          // TODO: Implement card tap functionality
+        },
+        child: SizedBox(
+          width: 150,
+          height: 100,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 40.0),
+              const SizedBox(height: 8.0),
+              Text(title),
+            ],
+          ),
         ),
       ),
     );
