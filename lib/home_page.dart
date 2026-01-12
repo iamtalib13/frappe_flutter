@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'login_page.dart';
+import 'reset_password_page.dart';
 
 class HomePage extends StatefulWidget {
   final String fullName;
@@ -47,10 +48,38 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: const Center(
-        child: Text(
-          'You are logged in',
-          style: TextStyle(fontSize: 24.0),
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          children: [
+            _buildCard('Reset Password', Icons.lock_reset),
+            const SizedBox(width: 8.0),
+            _buildCard('CRM', Icons.business),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCard(String title, IconData icon) {
+    return Card(
+      child: InkWell(
+        onTap: () {
+          if (title == 'Reset Password') {
+            Get.to(() => const ResetPasswordPage());
+          }
+        },
+        child: SizedBox(
+          width: 150,
+          height: 100,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 40.0),
+              const SizedBox(height: 8.0),
+              Text(title),
+            ],
+          ),
         ),
       ),
     );
