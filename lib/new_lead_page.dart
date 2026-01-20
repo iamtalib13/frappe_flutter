@@ -145,7 +145,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
           {
             'product': _selectedProduct,
             'product_name': _selectedProductName,
-            'amount': _productAmountController.text,
+            'product_amount': _productAmountController.text,
           }
         ]
       };
