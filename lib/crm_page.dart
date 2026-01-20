@@ -139,28 +139,33 @@ class _CrmPageState extends State<CrmPage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Wrap(
-                    spacing: 8.0,
-                    children: _filters[_selectedIndex]
-                        .map((filter) {
-                          // Extract status from "Status (Count)" format
-                          final status = filter.split(' (')[0];
-                          return ChoiceChip(
-                            label: Text(filter),
-                            selected: _currentFilterStatus == status,
-                            onSelected: (selected) {
-                              setState(() {
-                                _currentFilterStatus = status;
-                              });
-                            },
-                          );
-                        })
-                        .toList(),
+                Expanded(
+                  child: Scrollbar(
+                    thumbVisibility: false,
+                    trackVisibility: false,
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Wrap(
+                        spacing: 8.0,
+                        children: _filters[_selectedIndex]
+                            .map((filter) {
+                              // Extract status from "Status (Count)" format
+                              final status = filter.split(' (')[0];
+                              return ChoiceChip(
+                                label: Text(filter),
+                                selected: _currentFilterStatus == status,
+                                onSelected: (selected) {
+                                  setState(() {
+                                    _currentFilterStatus = status;
+                                  });
+                                },
+                              );
+                            })
+                            .toList(),
+                      ),
+                    ),
                   ),
                 ),
-                Text('Showing ${currentFilteredLeads.length} of ${_leads.length}'),
               ],
             ),
           ),
@@ -179,6 +184,10 @@ class _CrmPageState extends State<CrmPage> {
                 _buildTabPage('Report'),
               ],
             ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: Text('Showing ${currentFilteredLeads.length} of ${_leads.length}'),
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
