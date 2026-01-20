@@ -4,6 +4,7 @@ import 'package:dio/dio.dart'; // Add this import
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Add this import
 import 'dart:convert'; // Add this import for jsonEncode
 import 'lead_detail_page.dart';
+import 'new_lead_page.dart';
 
 class CrmPage extends StatefulWidget {
   const CrmPage({super.key});
@@ -196,7 +197,7 @@ class _CrmPageState extends State<CrmPage> {
               alignment: Alignment.centerRight,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Get.snackbar('New Lead', 'Add New Lead functionality here');
+                  Get.to(() => NewLeadPage(onLeadCreated: _fetchLeads));
                 },
                 icon: const Icon(Icons.add, color: Colors.white),
                 label: const Text(
