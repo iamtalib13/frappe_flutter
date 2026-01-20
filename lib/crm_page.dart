@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:dio/dio.dart'; // Add this import
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Add this import
 import 'dart:convert'; // Add this import for jsonEncode
+import 'lead_detail_page.dart';
 
 class CrmPage extends StatefulWidget {
   const CrmPage({super.key});
@@ -251,35 +252,40 @@ class _CrmPageState extends State<CrmPage> {
       itemCount: _filteredLeads.length,
       itemBuilder: (context, index) {
         final lead = _filteredLeads[index];
-        return Card(
-          margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  lead['first_name'] ?? 'N/A',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16.0,
+        return InkWell( // Added InkWell
+          onTap: () {
+            Get.to(() => LeadDetailPage(leadName: lead['name'])); // Navigate to LeadDetailPage
+          },
+          child: Card(
+            margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    lead['first_name'] ?? 'N/A',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16.0,
+                    ),
                   ),
-                ),
-                Text(lead['mobile_no'] ?? 'N/A'),
-                const SizedBox(height: 8.0),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Status: ${lead['status'] ?? 'N/A'}'),
-                    Text('Branch: ${lead['custom_branch'] ?? 'N/A'}'),
-                  ],
-                ),
-                const SizedBox(height: 8.0),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Text('Modified: ${lead['modified'] != null ? lead['modified'].split(' ')[0] : 'N/A'}'),
-                ),
-              ],
+                  Text(lead['mobile_no'] ?? 'N/A'),
+                  const SizedBox(height: 8.0),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Status: ${lead['status'] ?? 'N/A'}'),
+                      Text('Branch: ${lead['custom_branch'] ?? 'N/A'}'),
+                    ],
+                  ),
+                  const SizedBox(height: 8.0),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Text('Modified: ${lead['modified'] != null ? lead['modified'].split(' ')[0] : 'N/A'}'),
+                  ),
+                ],
+              ),
             ),
           ),
         );
