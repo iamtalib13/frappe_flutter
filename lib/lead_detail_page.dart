@@ -67,58 +67,64 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 3,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(_isLoading || _leadDetails == null
-              ? 'Lead Details'
-              : _leadDetails!['first_name'] ?? 'Lead Details'),
-          backgroundColor: const Color(0xFF006767),
-          bottom: const TabBar(
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            tabs: [
-              Tab(text: 'Lead'),
-              Tab(text: 'Product'),
-              Tab(text: 'Appointment'),
-            ],
-          ),
-        ),
-        body: _isLoading
-            ? const Center(child: CircularProgressIndicator())
-            : _errorMessage.isNotEmpty
-                ? Center(child: Text(_errorMessage))
-                : _leadDetails == null
-                    ? const Center(child: Text('Lead details not found.'))
-                    : TabBarView(
-                        children: [
-                          _buildLeadInfoTab(),
-                          _buildProductTab(),
-                          _buildAppointmentTab(),
-                        ],
-                      ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_isLoading || _leadDetails == null
+            ? 'Lead Details'
+            : _leadDetails!['first_name'] ?? 'Lead Details'),
+        backgroundColor: const Color(0xFF006767),
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _errorMessage.isNotEmpty
+              ? Center(child: Text(_errorMessage))
+              : _leadDetails == null
+                  ? const Center(child: Text('Lead details not found.'))
+                  : ListView(
+                      padding: const EdgeInsets.all(16.0),
+                      children: [
+                        const Text(
+                          'Lead Details',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildLeadInfoTab(),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Product Information',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildProductTab(),
+                        const SizedBox(height: 20),
+                        const Text(
+                          'Appointment',
+                          style: TextStyle(
+                              fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildAppointmentTab(),
+                      ],
+                    ),
     );
   }
 
   Widget _buildLeadInfoTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Card(
-        margin: EdgeInsets.zero, // Remove default card margin if any
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildDetailRow('Lead Name', _leadDetails!['first_name']),
-              _buildDetailRow('Status', _leadDetails!['status']),
-              _buildDetailRow('Branch', _leadDetails!['custom_branch']),
-              _buildDetailRow('Source', _leadDetails!['source']),
-              _buildDetailRow('Mobile No', _leadDetails!['mobile_no']),
-            ],
-          ),
+    return Card(
+      margin: EdgeInsets.zero, // Remove default card margin if any
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow('Lead Name', _leadDetails!['first_name']),
+            _buildDetailRow('Status', _leadDetails!['status']),
+            _buildDetailRow('Branch', _leadDetails!['custom_branch']),
+            _buildDetailRow('Source', _leadDetails!['source']),
+            _buildDetailRow('Mobile No', _leadDetails!['mobile_no']),
+          ],
         ),
       ),
     );
@@ -131,14 +137,10 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
       return const Center(child: Text('No products associated with this lead.'));
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(8.0),
-      itemCount: products.length,
-      itemBuilder: (context, index) {
-        final product = products[index];
-        // Use 'product_amount' field as specified by the user
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: products.map((product) {
         final amount = (product['product_amount'] ?? 0.0) as num;
-
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4.0),
           child: Padding(
@@ -152,15 +154,21 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
             ),
           ),
         );
-      },
+      }).toList(),
     );
   }
 
   Widget _buildAppointmentTab() {
-    return const Center(
-      child: Text(
-        'Appointment functionality coming soon.',
-        style: TextStyle(fontSize: 16, color: Colors.grey),
+    return const Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: EdgeInsets.all(12.0),
+        child: Center(
+          child: Text(
+            'Appointment functionality coming soon.',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+        ),
       ),
     );
   }

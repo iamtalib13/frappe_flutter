@@ -404,10 +404,50 @@ class _CrmPageState extends State<CrmPage> {
       return const Center(child: Text('No Appointments Found'));
     }
 
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final List<dynamic> filteredAppointments = _appointments.where((appt) {
+      final status = _currentFilterStatus.split(' (')[0];
+      if (status == 'All') {
+        return true;
+      }
+      if (status == 'Open' || status == 'Closed') {
+        return appt['status'] == status;
+      }
+      
+      final scheduledTimeString = appt['scheduled_time'];
+      if (scheduledTimeString != null) {
+        try {
+          final scheduledTime = DateTime.parse(scheduledTimeString);
+          final scheduledDate = DateTime(scheduledTime.year, scheduledTime.month, scheduledTime.day);
+
+          if (status == 'Today') {
+            return scheduledDate.isAtSameMomentAs(today);
+          }
+          if (status == 'Upcoming') {
+            return scheduledTime.isAfter(now);
+          }
+          if (status == 'Due') {
+            return scheduledTime.isBefore(now) && appt['status'] != 'Closed';
+          }
+        } catch (e) {
+          return false; // Don't show if date is invalid
+        }
+      }
+      return false; // Don't show if no scheduled_time for date-based filters
+    }).toList();
+    
+    if (filteredAppointments.isEmpty) {
+      final status = _currentFilterStatus.split(' (')[0];
+      return Center(child: Text('No $status Appointments Found'));
+    }
+
+
     return ListView.builder(
-      itemCount: _appointments.length,
+      itemCount: filteredAppointments.length,
       itemBuilder: (context, index) {
-        final appointment = _appointments[index];
+        final appointment = filteredAppointments[index];
         return InkWell(
           onTap: () {
             Get.to(() => AppointmentDetailPage(appointment: appointment));
