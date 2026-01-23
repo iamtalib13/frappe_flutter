@@ -6,6 +6,7 @@ import 'dart:convert'; // Add this import for jsonEncode
 import 'lead_detail_page.dart';
 import 'new_lead_page.dart';
 import 'appointment_detail_page.dart';
+import 'new_appointment_page.dart';
 
 class CrmPage extends StatefulWidget {
   const CrmPage({super.key});
@@ -201,25 +202,7 @@ class _CrmPageState extends State<CrmPage> {
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
             child: Text('Showing ${currentFilteredLeads.length} of ${_leads.length}'),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton.icon(
-                onPressed: () {
-                  Get.to(() => NewLeadPage(onLeadCreated: _fetchLeads));
-                },
-                icon: const Icon(Icons.add, color: Colors.white),
-                label: const Text(
-                  'New Lead',
-                  style: TextStyle(color: Colors.white),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF006767),
-                ),
-              ),
-            ),
-          ),
+          _buildActionButtons(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -239,6 +222,44 @@ class _CrmPageState extends State<CrmPage> {
         ],
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
+      ),
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: _selectedIndex == 0
+            ? ElevatedButton.icon(
+                onPressed: () {
+                  Get.to(() => NewLeadPage(onLeadCreated: _fetchLeads));
+                },
+                icon: const Icon(Icons.add, color: Colors.white),
+                label: const Text(
+                  'New Lead',
+                  style: TextStyle(color: Colors.white),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF006767),
+                ),
+              )
+            : _selectedIndex == 1
+                ? ElevatedButton.icon(
+                    onPressed: () {
+                      Get.to(() => NewAppointmentPage(onAppointmentCreated: _fetchAppointments));
+                    },
+                    icon: const Icon(Icons.add, color: Colors.white),
+                    label: const Text(
+                      'New Appointment',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF006767),
+                    ),
+                  )
+                : const SizedBox.shrink(),
       ),
     );
   }
@@ -305,9 +326,6 @@ class _CrmPageState extends State<CrmPage> {
   }
 
   Future<void> _fetchAppointments() async {
-    // To prevent re-fetching if data is already loaded
-    if (_appointments.isNotEmpty) return;
-
     setState(() {
       _appointmentsLoading = true;
     });
