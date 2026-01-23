@@ -6,6 +6,7 @@ import 'dart:convert'; // Add this import for jsonEncode
 import 'lead_detail_page.dart';
 import 'new_lead_page.dart';
 import 'appointment_detail_page.dart';
+import 'package:intl/intl.dart';
 import 'new_appointment_page.dart';
 
 class CrmPage extends StatefulWidget {
@@ -28,6 +29,12 @@ class _CrmPageState extends State<CrmPage> {
   List<dynamic> _appointments = [];
   bool _appointmentsLoading = false;
 
+  Map<String, dynamic>? _employeeDetails;
+  bool _reportLoading = false;
+
+  List<dynamic> _todaysLeads = [];
+  bool _todaysLeadsLoading = false;
+
   final List<String> _titles = ['Lead', 'Appointment', 'Report'];
 
   final List<List<String>> _filters = [
@@ -41,6 +48,120 @@ class _CrmPageState extends State<CrmPage> {
     super.initState();
     _fetchLeads(); // Call fetch leads on init
   }
+
+  Future<void> _fetchTodaysLeads() async {
+    setState(() {
+      _todaysLeadsLoading = true;
+    });
+
+    try {
+      final sid = await _secureStorage.read(key: 'sid');
+      if (sid == null) {
+        Get.snackbar('Error', 'Session expired. Please log in again.');
+        return;
+      }
+
+      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
+
+      final response = await _dio.get(
+        'https://mysahayog.com/api/resource/Lead',
+        queryParameters: {
+          'filters': jsonEncode([
+            ['creation', '>=', today]
+          ]),
+          'fields': jsonEncode(['name', 'status']),
+        },
+        options: Options(
+          headers: {'Cookie': 'sid=$sid'},
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        setState(() {
+          _todaysLeads = response.data['data'];
+        });
+      } else {
+        Get.snackbar('Error', 'Failed to fetch today\'s leads');
+      }
+    } on DioException catch (e) {
+      Get.snackbar('Error', e.response?.data['message'] ?? 'An error occurred');
+    } finally {
+      setState(() {
+        _todaysLeadsLoading = false;
+      });
+    }
+  }
+
+  Future<void> _fetchEmployeeDetails() async {
+    if (_employeeDetails != null) return; // Details already fetched
+
+    setState(() {
+      _reportLoading = true;
+    });
+
+    try {
+      final sid = await _secureStorage.read(key: 'sid');
+      if (sid == null) {
+        Get.snackbar('Error', 'Session expired. Please log in again.');
+        return;
+      }
+
+      // 1. Get the logged-in user
+      final userResponse = await _dio.get(
+        'https://mysahayog.com/api/method/frappe.auth.get_logged_user',
+        options: Options(
+          headers: {'Cookie': 'sid=$sid'},
+        ),
+      );
+
+      final loggedInUser = userResponse.data['message'];
+      if (loggedInUser == null) {
+        Get.snackbar('Error', 'Could not retrieve logged in user.');
+        return;
+      }
+
+      // 2. Find the employee by user_id
+      final employeeResponse = await _dio.get(
+        'https://mysahayog.com/api/resource/Employee',
+        queryParameters: {
+          'filters': jsonEncode([
+            ['user_id', '=', loggedInUser]
+          ]),
+          'fields': jsonEncode([
+            'employee',
+            'employee_name',
+            'designation',
+            'branch',
+            'custom_region',
+            'custom_zone',
+          ]),
+        },
+        options: Options(
+          headers: {'Cookie': 'sid=$sid'},
+        ),
+      );
+
+      if (employeeResponse.statusCode == 200) {
+        final employees = employeeResponse.data['data'];
+        if (employees.isNotEmpty) {
+          setState(() {
+            _employeeDetails = employees[0];
+          });
+        } else {
+          Get.snackbar('Error', 'No matching employee found for the current user.');
+        }
+      } else {
+        Get.snackbar('Error', 'Failed to fetch employee details');
+      }
+    } on DioException catch (e) {
+      Get.snackbar('Error', e.response?.data['message'] ?? 'An error occurred');
+    } finally {
+      setState(() {
+        _reportLoading = false;
+      });
+    }
+  }
+
 
   Future<void> _fetchLeads() async {
     setState(() {
@@ -108,6 +229,9 @@ class _CrmPageState extends State<CrmPage> {
   void _onItemTapped(int index) {
     if (index == 1) { // Appointment tab
       _fetchAppointments();
+    } else if (index == 2) { // Report tab
+      _fetchEmployeeDetails();
+      _fetchTodaysLeads();
     }
     setState(() {
       _selectedIndex = index;
@@ -185,6 +309,9 @@ class _CrmPageState extends State<CrmPage> {
               onPageChanged: (index) {
                 if (index == 1) { // Appointment tab
                   _fetchAppointments();
+                } else if (index == 2) { // Report tab
+                  _fetchEmployeeDetails();
+                  _fetchTodaysLeads();
                 }
                 setState(() {
                   _selectedIndex = index;
@@ -194,7 +321,7 @@ class _CrmPageState extends State<CrmPage> {
               children: [
                 _buildLeadTab(),
                 _buildAppointmentTab(),
-                _buildTabPage('Report'),
+                _buildReportTab(),
               ],
             ),
           ),
@@ -502,12 +629,149 @@ class _CrmPageState extends State<CrmPage> {
     );
   }
 
-  Widget _buildTabPage(String title) {
-    return Center(
-      child: Text(
-        '$title Content',
-        style: const TextStyle(fontSize: 24),
+  Widget _buildReportTab() {
+    if (_reportLoading || _todaysLeadsLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_employeeDetails == null) {
+      return const Center(child: Text('Employee details not found.'));
+    }
+
+    final totalLeads = _todaysLeads.length;
+    final followUpLeads = _todaysLeads.where((lead) => lead['status'] == 'Follow Up').length;
+    final convertedLeads = _todaysLeads.where((lead) => lead['status'] == 'Converted').length;
+    final notInterestedLeads = _todaysLeads.where((lead) => lead['status'] == 'Not Interested').length;
+
+    String rating;
+    if (convertedLeads >= 1) {
+      rating = 'Good';
+    } else if (followUpLeads >= 4 && convertedLeads == 0) {
+      rating = 'Average';
+    } else {
+      rating = 'Bad';
+    }
+
+    String qualification;
+    if (totalLeads >= 10) {
+      qualification = 'Qualified';
+    } else {
+      qualification = 'Disqualified';
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildDetailRow('Employee ID', _employeeDetails!['employee']),
+                  _buildDetailRow('Employee', _employeeDetails!['employee_name']),
+                  _buildDetailRow('Designation', _employeeDetails!['designation']),
+                  _buildDetailRow('Branch', _employeeDetails!['branch']),
+                  _buildDetailRow('Region', _employeeDetails!['custom_region']),
+                  _buildDetailRow('Zone', _employeeDetails!['custom_zone']),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildCountCard('Total Leads', totalLeads),
+              _buildCountCard('Follow-ups', followUpLeads),
+              _buildCountCard('Converted', convertedLeads),
+              _buildCountCard('Not Interested', notInterestedLeads),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        const Text('Rating', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text(rating),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        const Text('Qualification', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text(qualification),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Today\'s Lead IDs',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          _todaysLeads.isEmpty
+              ? const Text('No leads created today.')
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: _todaysLeads.map((lead) => Text(lead['name'])).toList(),
+                ),
+        ],
       ),
     );
   }
+
+  Widget _buildCountCard(String title, int count) {
+    return Column(
+      children: [
+        Text(
+          count.toString().padLeft(2, '0'),
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        Text(title),
+      ],
+    );
+  }
+
+  Widget _buildDetailRow(String label, String? value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          Expanded(
+            child: Text(value ?? 'N/A'),
+          ),
+        ],
+      ),
+    );
+  }
+
+
 }
