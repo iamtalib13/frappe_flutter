@@ -21,9 +21,11 @@ class AppointmentDetailPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildDetailRow('Customer', appointment['customer_name']),
-                _buildDetailRow('Scheduled Time', appointment['scheduled_time']),
+                _buildDetailRow(
+                    'Scheduled Time', appointment['scheduled_time']),
                 _buildDetailRow('Status', appointment['status']),
-                _buildDetailRow('Last Modified', appointment['modified']?.split(' ')[0]),
+                _buildDetailRow(
+                    'Last Modified', appointment['modified']?.split(' ')[0]),
               ],
             ),
           ),

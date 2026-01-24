@@ -21,7 +21,8 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
 
   String? _selectedLead;
   String? _selectedStatus;
-  final TextEditingController _scheduledTimeController = TextEditingController();
+  final TextEditingController _scheduledTimeController =
+      TextEditingController();
 
   List<dynamic> _leads = [];
   bool _isLoading = false;
@@ -98,7 +99,8 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
           widget.onAppointmentCreated?.call();
         }
       } on DioException catch (e) {
-        Get.snackbar('Error', e.response?.data['message'] ?? 'An error occurred');
+        Get.snackbar(
+            'Error', e.response?.data['message'] ?? 'An error occurred');
       } finally {
         setState(() {
           _isLoading = false;
@@ -124,7 +126,8 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(labelText: 'Customer Name'),
+                      decoration:
+                          const InputDecoration(labelText: 'Customer Name'),
                       value: _selectedLead,
                       items: _leads.map<DropdownMenuItem<String>>((lead) {
                         return DropdownMenuItem<String>(
@@ -137,7 +140,8 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
                           _selectedLead = value;
                         });
                       },
-                      validator: (value) => value == null ? 'Please select a customer' : null,
+                      validator: (value) =>
+                          value == null ? 'Please select a customer' : null,
                     ),
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
@@ -155,7 +159,8 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
                           _selectedStatus = value;
                         });
                       },
-                      validator: (value) => value == null ? 'Please select a status' : null,
+                      validator: (value) =>
+                          value == null ? 'Please select a status' : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -185,11 +190,15 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
                               pickedTime.hour,
                               pickedTime.minute,
                             );
-                            _scheduledTimeController.text = DateFormat('yyyy-MM-dd HH:mm:ss').format(dateTime);
+                            _scheduledTimeController.text =
+                                DateFormat('yyyy-MM-dd HH:mm:ss')
+                                    .format(dateTime);
                           }
                         }
                       },
-                      validator: (value) => value == null || value.isEmpty ? 'Please select a time' : null,
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Please select a time'
+                          : null,
                     ),
                     const SizedBox(height: 32),
                     ElevatedButton(
@@ -198,7 +207,8 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
                         backgroundColor: const Color(0xFF006767),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: const Text('Create Appointment', style: TextStyle(color: Colors.white)),
+                      child: const Text('Create Appointment',
+                          style: TextStyle(color: Colors.white)),
                     ),
                   ],
                 ),

@@ -57,7 +57,8 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
         _errorMessage = 'Failed to fetch lead details: ${response.statusCode}';
       }
     } on DioException catch (e) {
-      _errorMessage = e.response?.data['message'] ?? 'An error occurred while fetching lead details';
+      _errorMessage = e.response?.data['message'] ??
+          'An error occurred while fetching lead details';
     } finally {
       setState(() {
         _isLoading = false;
@@ -134,7 +135,8 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
     final List<dynamic>? products = _leadDetails!['custom_product_table'];
 
     if (products == null || products.isEmpty) {
-      return const Center(child: Text('No products associated with this lead.'));
+      return const Center(
+          child: Text('No products associated with this lead.'));
     }
 
     return Column(
