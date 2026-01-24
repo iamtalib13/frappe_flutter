@@ -94,6 +94,7 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
         );
 
         if (response.statusCode == 200) {
+          if (!mounted) return;
           Get.back();
           Get.snackbar('Success', 'Appointment created successfully');
           widget.onAppointmentCreated?.call();
