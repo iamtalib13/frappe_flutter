@@ -38,8 +38,21 @@ class _CrmPageState extends State<CrmPage> {
   final List<String> _titles = ['Lead', 'Appointment', 'Report'];
 
   final List<List<String>> _filters = [
-    ['All', 'Lead', 'Converted', 'Follow Up', 'Not Interested'], // Lead filters (names only)
-    ['All (0)', 'Today (0)', 'Due (0)', 'Upcoming (0)', 'Open (0)', 'Closed (0)'], // Appointment filters
+    [
+      'All',
+      'Lead',
+      'Converted',
+      'Follow Up',
+      'Not Interested'
+    ], // Lead filters (names only)
+    [
+      'All (0)',
+      'Today (0)',
+      'Due (0)',
+      'Upcoming (0)',
+      'Open (0)',
+      'Closed (0)'
+    ], // Appointment filters
     [], // No filters for Report tab yet
   ];
 
@@ -148,7 +161,8 @@ class _CrmPageState extends State<CrmPage> {
             _employeeDetails = employees[0];
           });
         } else {
-          Get.snackbar('Error', 'No matching employee found for the current user.');
+          Get.snackbar(
+              'Error', 'No matching employee found for the current user.');
         }
       } else {
         Get.snackbar('Error', 'Failed to fetch employee details');
@@ -161,7 +175,6 @@ class _CrmPageState extends State<CrmPage> {
       });
     }
   }
-
 
   Future<void> _fetchLeads() async {
     setState(() {
@@ -200,10 +213,14 @@ class _CrmPageState extends State<CrmPage> {
 
           // Calculate counts for Lead filters
           int allCount = _leads.length;
-          int leadCount = _leads.where((lead) => lead['status'] == 'Lead').length;
-          int convertedCount = _leads.where((lead) => lead['status'] == 'Converted').length;
-          int followUpCount = _leads.where((lead) => lead['status'] == 'Follow Up').length;
-          int notInterestedCount = _leads.where((lead) => lead['status'] == 'Not Interested').length;
+          int leadCount =
+              _leads.where((lead) => lead['status'] == 'Lead').length;
+          int convertedCount =
+              _leads.where((lead) => lead['status'] == 'Converted').length;
+          int followUpCount =
+              _leads.where((lead) => lead['status'] == 'Follow Up').length;
+          int notInterestedCount =
+              _leads.where((lead) => lead['status'] == 'Not Interested').length;
 
           // Update the _filters list for the Lead tab (index 0)
           _filters[0] = [
@@ -218,7 +235,10 @@ class _CrmPageState extends State<CrmPage> {
         Get.snackbar('Error', 'Failed to fetch leads');
       }
     } on DioException catch (e) {
-      Get.snackbar('Error', e.response?.data['message'] ?? 'An error occurred while fetching leads');
+      Get.snackbar(
+          'Error',
+          e.response?.data['message'] ??
+              'An error occurred while fetching leads');
     } finally {
       setState(() {
         _leadsLoading = false;
@@ -227,9 +247,11 @@ class _CrmPageState extends State<CrmPage> {
   }
 
   void _onItemTapped(int index) {
-    if (index == 1) { // Appointment tab
+    if (index == 1) {
+      // Appointment tab
       _fetchAppointments();
-    } else if (index == 2) { // Report tab
+    } else if (index == 2) {
+      // Report tab
       _fetchEmployeeDetails();
       _fetchTodaysLeads();
     }
@@ -246,7 +268,9 @@ class _CrmPageState extends State<CrmPage> {
     final List<dynamic> currentFilteredLeads = _selectedIndex == 0
         ? (_currentFilterStatus == 'All'
             ? _leads
-            : _leads.where((lead) => lead['status'] == _currentFilterStatus).toList())
+            : _leads
+                .where((lead) => lead['status'] == _currentFilterStatus)
+                .toList())
         : [];
 
     return Scaffold(
@@ -282,21 +306,19 @@ class _CrmPageState extends State<CrmPage> {
                       scrollDirection: Axis.horizontal,
                       child: Wrap(
                         spacing: 8.0,
-                        children: _filters[_selectedIndex]
-                            .map((filter) {
-                              // Extract status from "Status (Count)" format
-                              final status = filter.split(' (')[0];
-                              return ChoiceChip(
-                                label: Text(filter),
-                                selected: _currentFilterStatus == status,
-                                onSelected: (selected) {
-                                  setState(() {
-                                    _currentFilterStatus = status;
-                                  });
-                                },
-                              );
-                            })
-                            .toList(),
+                        children: _filters[_selectedIndex].map((filter) {
+                          // Extract status from "Status (Count)" format
+                          final status = filter.split(' (')[0];
+                          return ChoiceChip(
+                            label: Text(filter),
+                            selected: _currentFilterStatus == status,
+                            onSelected: (selected) {
+                              setState(() {
+                                _currentFilterStatus = status;
+                              });
+                            },
+                          );
+                        }).toList(),
                       ),
                     ),
                   ),
@@ -308,15 +330,18 @@ class _CrmPageState extends State<CrmPage> {
             child: PageView(
               controller: _pageController,
               onPageChanged: (index) {
-                if (index == 1) { // Appointment tab
+                if (index == 1) {
+                  // Appointment tab
                   _fetchAppointments();
-                } else if (index == 2) { // Report tab
+                } else if (index == 2) {
+                  // Report tab
                   _fetchEmployeeDetails();
                   _fetchTodaysLeads();
                 }
                 setState(() {
                   _selectedIndex = index;
-                  _currentFilterStatus = 'All'; // Reset filter when changing tabs
+                  _currentFilterStatus =
+                      'All'; // Reset filter when changing tabs
                 });
               },
               children: [
@@ -328,7 +353,8 @@ class _CrmPageState extends State<CrmPage> {
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-            child: Text('Showing ${currentFilteredLeads.length} of ${_leads.length}'),
+            child: Text(
+                'Showing ${currentFilteredLeads.length} of ${_leads.length}'),
           ),
           _buildActionButtons(),
         ],
@@ -376,7 +402,8 @@ class _CrmPageState extends State<CrmPage> {
             : _selectedIndex == 1
                 ? ElevatedButton.icon(
                     onPressed: () {
-                      Get.to(() => NewAppointmentPage(onAppointmentCreated: _fetchAppointments));
+                      Get.to(() => NewAppointmentPage(
+                          onAppointmentCreated: _fetchAppointments));
                     },
                     icon: const Icon(Icons.add, color: Colors.white),
                     label: const Text(
@@ -402,7 +429,9 @@ class _CrmPageState extends State<CrmPage> {
 
     final List<dynamic> _filteredLeads = _currentFilterStatus == 'All'
         ? _leads
-        : _leads.where((lead) => lead['status'] == _currentFilterStatus).toList();
+        : _leads
+            .where((lead) => lead['status'] == _currentFilterStatus)
+            .toList();
 
     if (_filteredLeads.isEmpty) {
       return Center(child: Text('No ${_currentFilterStatus} Leads Found'));
@@ -412,9 +441,11 @@ class _CrmPageState extends State<CrmPage> {
       itemCount: _filteredLeads.length,
       itemBuilder: (context, index) {
         final lead = _filteredLeads[index];
-        return InkWell( // Added InkWell
+        return InkWell(
+          // Added InkWell
           onTap: () {
-            Get.to(() => LeadDetailPage(leadName: lead['name'])); // Navigate to LeadDetailPage
+            Get.to(() => LeadDetailPage(
+                leadName: lead['name'])); // Navigate to LeadDetailPage
           },
           child: Card(
             margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
@@ -442,7 +473,8 @@ class _CrmPageState extends State<CrmPage> {
                   const SizedBox(height: 8.0),
                   Align(
                     alignment: Alignment.centerRight,
-                    child: Text('Modified: ${lead['modified'] != null ? lead['modified'].split(' ')[0] : 'N/A'}'),
+                    child: Text(
+                        'Modified: ${lead['modified'] != null ? lead['modified'].split(' ')[0] : 'N/A'}'),
                   ),
                 ],
               ),
@@ -488,33 +520,35 @@ class _CrmPageState extends State<CrmPage> {
           // --- Start Count Calculation ---
           final now = DateTime.now();
           final today = DateTime(now.year, now.month, now.day);
-          
+
           int allCount = _appointments.length;
           int todayCount = 0;
           int dueCount = 0;
           int upcomingCount = 0;
-          int openCount = _appointments.where((a) => a['status'] == 'Open').length;
-          int closedCount = _appointments.where((a) => a['status'] == 'Closed').length;
+          int openCount =
+              _appointments.where((a) => a['status'] == 'Open').length;
+          int closedCount =
+              _appointments.where((a) => a['status'] == 'Closed').length;
 
           for (var appt in _appointments) {
             final scheduledTimeString = appt['scheduled_time'];
             if (scheduledTimeString != null) {
               try {
                 final scheduledTime = DateTime.parse(scheduledTimeString);
-                final scheduledDate = DateTime(scheduledTime.year, scheduledTime.month, scheduledTime.day);
+                final scheduledDate = DateTime(
+                    scheduledTime.year, scheduledTime.month, scheduledTime.day);
 
                 if (scheduledDate.isAtSameMomentAs(today)) {
                   todayCount++;
                 }
-                
+
                 if (scheduledTime.isAfter(now)) {
                   upcomingCount++;
                 }
 
                 if (scheduledTime.isBefore(now) && appt['status'] != 'Closed') {
-                   dueCount++;
+                  dueCount++;
                 }
-
               } catch (e) {
                 // Ignore if date format is invalid
               }
@@ -534,7 +568,10 @@ class _CrmPageState extends State<CrmPage> {
         });
       }
     } on DioException catch (e) {
-      Get.snackbar('Error', e.response?.data['message'] ?? 'An error occurred while fetching appointments');
+      Get.snackbar(
+          'Error',
+          e.response?.data['message'] ??
+              'An error occurred while fetching appointments');
     } finally {
       setState(() {
         _appointmentsLoading = false;
@@ -561,12 +598,13 @@ class _CrmPageState extends State<CrmPage> {
       if (status == 'Open' || status == 'Closed') {
         return appt['status'] == status;
       }
-      
+
       final scheduledTimeString = appt['scheduled_time'];
       if (scheduledTimeString != null) {
         try {
           final scheduledTime = DateTime.parse(scheduledTimeString);
-          final scheduledDate = DateTime(scheduledTime.year, scheduledTime.month, scheduledTime.day);
+          final scheduledDate = DateTime(
+              scheduledTime.year, scheduledTime.month, scheduledTime.day);
 
           if (status == 'Today') {
             return scheduledDate.isAtSameMomentAs(today);
@@ -583,12 +621,11 @@ class _CrmPageState extends State<CrmPage> {
       }
       return false; // Don't show if no scheduled_time for date-based filters
     }).toList();
-    
+
     if (filteredAppointments.isEmpty) {
       final status = _currentFilterStatus.split(' (')[0];
       return Center(child: Text('No $status Appointments Found'));
     }
-
 
     return ListView.builder(
       itemCount: filteredAppointments.length,
@@ -618,7 +655,8 @@ class _CrmPageState extends State<CrmPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text('Status: ${appointment['status'] ?? 'N/A'}'),
-                      Text('Modified: ${appointment['modified'] != null ? appointment['modified'].split(' ')[0] : 'N/A'}'),
+                      Text(
+                          'Modified: ${appointment['modified'] != null ? appointment['modified'].split(' ')[0] : 'N/A'}'),
                     ],
                   ),
                 ],
@@ -639,9 +677,12 @@ class _CrmPageState extends State<CrmPage> {
     }
 
     final totalLeads = _todaysLeads.length;
-    final followUpLeads = _todaysLeads.where((lead) => lead['status'] == 'Follow Up').length;
-    final convertedLeads = _todaysLeads.where((lead) => lead['status'] == 'Converted').length;
-    final notInterestedLeads = _todaysLeads.where((lead) => lead['status'] == 'Not Interested').length;
+    final followUpLeads =
+        _todaysLeads.where((lead) => lead['status'] == 'Follow Up').length;
+    final convertedLeads =
+        _todaysLeads.where((lead) => lead['status'] == 'Converted').length;
+    final notInterestedLeads =
+        _todaysLeads.where((lead) => lead['status'] == 'Not Interested').length;
 
     String rating;
     if (convertedLeads >= 1) {
@@ -681,36 +722,37 @@ class _CrmPageState extends State<CrmPage> {
           const SizedBox(height: 16),
           Row(
             children: [
-    Expanded(
-    child: Card(
-    child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  const Text('Rating', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
-                  Text(rating),
-                ],
-              ),
-            ),
-          ),
-        ),
-
-          const SizedBox(height: 16),
-    Expanded(
-    child: Card(
+              Expanded(
+                child: Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       children: [
-                        const Text('Qualification', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text('Rating',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text(rating),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        const Text('Qualification',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
                         Text(qualification),
                       ],
                     ),
                   ),
-          ),
-        ),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -723,10 +765,12 @@ class _CrmPageState extends State<CrmPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Rating Criteria', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text('Rating Criteria',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
                         const Text('Good: At least 1 converted.'),
-                        const Text('Average: At least 4 follow-ups and none converted.'),
+                        const Text(
+                            'Average: At least 4 follow-ups and none converted.'),
                         const Text('Bad: Neither above.'),
                       ],
                     ),
@@ -741,7 +785,8 @@ class _CrmPageState extends State<CrmPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Qualification Criteria', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text('Qualification Criteria',
+                            style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
                         const Text('Qualified: At least 10 leads.'),
                         const Text('Disqualified: Less than 10 leads.'),
@@ -753,8 +798,6 @@ class _CrmPageState extends State<CrmPage> {
             ],
           ),
           const SizedBox(height: 16),
-
-
         ],
       ),
     );
@@ -792,6 +835,4 @@ class _CrmPageState extends State<CrmPage> {
       ),
     );
   }
-
-
 }

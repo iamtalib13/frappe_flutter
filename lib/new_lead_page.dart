@@ -22,7 +22,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
   final _firstNameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _productAmountController = TextEditingController();
-  
+
   // State for Dropdowns
   String? _selectedStatus;
   String? _selectedSource;
@@ -74,7 +74,8 @@ class _NewLeadPageState extends State<NewLeadPage> {
         });
       }
     } on DioException catch (e) {
-      Get.snackbar('Error', e.response?.data['message'] ?? 'Could not fetch lead sources.');
+      Get.snackbar('Error',
+          e.response?.data['message'] ?? 'Could not fetch lead sources.');
     } finally {
       setState(() {
         _sourcesLoading = false;
@@ -110,7 +111,8 @@ class _NewLeadPageState extends State<NewLeadPage> {
         });
       }
     } on DioException catch (e) {
-      Get.snackbar('Error', e.response?.data['message'] ?? 'Could not fetch products.');
+      Get.snackbar(
+          'Error', e.response?.data['message'] ?? 'Could not fetch products.');
     } finally {
       setState(() {
         _productsLoading = false;
@@ -131,10 +133,12 @@ class _NewLeadPageState extends State<NewLeadPage> {
       final sid = await _secureStorage.read(key: 'sid');
       if (sid == null) {
         Get.snackbar('Error', 'Session expired. Please log in again.');
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
-      
+
       final leadData = {
         'doctype': 'Lead',
         'first_name': _firstNameController.text,
@@ -160,14 +164,16 @@ class _NewLeadPageState extends State<NewLeadPage> {
       );
 
       if (response.statusCode == 200) {
-        widget.onLeadCreated(); 
+        widget.onLeadCreated();
         Get.back();
         Get.snackbar('Success', 'Lead created successfully');
       } else {
-        Get.snackbar('Error', 'Failed to create lead: ${response.statusMessage}');
+        Get.snackbar(
+            'Error', 'Failed to create lead: ${response.statusMessage}');
       }
     } on DioException catch (e) {
-      Get.snackbar('Error', e.response?.data?['message'] ?? 'An error occurred');
+      Get.snackbar(
+          'Error', e.response?.data?['message'] ?? 'An error occurred');
     } finally {
       setState(() {
         _isLoading = false;
@@ -220,24 +226,33 @@ class _NewLeadPageState extends State<NewLeadPage> {
                 value: _selectedSource,
                 decoration: InputDecoration(
                   labelText: 'Lead Source',
-                  suffixIcon: _sourcesLoading ? const Padding(
-                    padding: EdgeInsets.all(10.0),
-                    child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2.0)),
-                  ) : null,
+                  suffixIcon: _sourcesLoading
+                      ? const Padding(
+                          padding: EdgeInsets.all(10.0),
+                          child: SizedBox(
+                              height: 20,
+                              width: 20,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2.0)),
+                        )
+                      : null,
                 ),
                 hint: const Text('Select Source'),
-                onChanged: _sourcesLoading ? null : (value) {
-                  setState(() {
-                    _selectedSource = value;
-                  });
-                },
+                onChanged: _sourcesLoading
+                    ? null
+                    : (value) {
+                        setState(() {
+                          _selectedSource = value;
+                        });
+                      },
                 items: _leadSources.map<DropdownMenuItem<String>>((source) {
                   return DropdownMenuItem<String>(
                     value: source['name'],
                     child: Text(source['name'] as String),
                   );
                 }).toList(),
-                validator: (value) => value == null ? 'Please select a source' : null,
+                validator: (value) =>
+                    value == null ? 'Please select a source' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -248,38 +263,50 @@ class _NewLeadPageState extends State<NewLeadPage> {
                     value!.isEmpty ? 'Please enter a phone number' : null,
               ),
               const SizedBox(height: 16),
-               DropdownButtonFormField<String>(
+              DropdownButtonFormField<String>(
                 value: _selectedProduct,
                 isExpanded: true,
                 decoration: InputDecoration(
                   labelText: 'Product',
-                  suffixIcon: _productsLoading ? const Padding(
-                    padding: EdgeInsets.all(10.0),
-                    child: SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2.0)),
-                  ) : null,
+                  suffixIcon: _productsLoading
+                      ? const Padding(
+                          padding: EdgeInsets.all(10.0),
+                          child: SizedBox(
+                              height: 20,
+                              width: 20,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2.0)),
+                        )
+                      : null,
                 ),
                 hint: const Text('Select Product'),
-                onChanged: _productsLoading ? null : (value) {
-                  final selected = _products.firstWhere((p) => p['name'] == value);
-                  setState(() {
-                    _selectedProduct = value;
-                    _selectedProductName = selected['product_name'];
-                  });
-                },
+                onChanged: _productsLoading
+                    ? null
+                    : (value) {
+                        final selected =
+                            _products.firstWhere((p) => p['name'] == value);
+                        setState(() {
+                          _selectedProduct = value;
+                          _selectedProductName = selected['product_name'];
+                        });
+                      },
                 items: _products.map<DropdownMenuItem<String>>((product) {
                   return DropdownMenuItem<String>(
                     value: product['name'],
-                    child: Text("${product['name']} - ${product['product_name']}"),
+                    child:
+                        Text("${product['name']} - ${product['product_name']}"),
                   );
                 }).toList(),
-                validator: (value) => value == null ? 'Please select a product' : null,
+                validator: (value) =>
+                    value == null ? 'Please select a product' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _productAmountController,
                 decoration: const InputDecoration(labelText: 'Product Amount'),
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                 validator: (value) =>
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                validator: (value) =>
                     value!.isEmpty ? 'Please enter a product amount' : null,
               ),
               const SizedBox(height: 32),
@@ -293,7 +320,8 @@ class _NewLeadPageState extends State<NewLeadPage> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 50, vertical: 15),
                         ),
-                        child: const Text('Save', style: TextStyle(color: Colors.white)),
+                        child: const Text('Save',
+                            style: TextStyle(color: Colors.white)),
                       ),
               ),
             ],

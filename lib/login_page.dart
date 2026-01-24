@@ -47,8 +47,10 @@ class _LoginPageState extends State<LoginPage> {
             if (sidCookie.isNotEmpty) {
               final sid = sidCookie.split(';').first.split('=').last;
               await _secureStorage.write(key: 'sid', value: sid);
-              await _secureStorage.write(key: 'fullName', value: response.data['full_name']);
-              await _secureStorage.write(key: 'email', value: _emailController.text);
+              await _secureStorage.write(
+                  key: 'fullName', value: response.data['full_name']);
+              await _secureStorage.write(
+                  key: 'email', value: _emailController.text);
             }
           }
           Get.off(() => HomePage(
