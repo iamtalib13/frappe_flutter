@@ -6,6 +6,7 @@ import 'package:dio/dio.dart' as dio_package;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
+import 'package:frappe_flutter/error_page.dart';
 
 class NewAppointmentPage extends StatefulWidget {
   final VoidCallback? onAppointmentCreated;
@@ -37,13 +38,21 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
   @override
   void initState() {
     super.initState();
-    _fetchLeads(); // Still need to fetch leads for the dropdown
-
-    if (widget.initialAppointmentData != null) {
-      _selectedLead = widget.initialAppointmentData!['customer_name']; // Pre-fill customer name
-      _selectedStatus = widget.initialAppointmentData!['status']; // Pre-fill status
-      _scheduledTimeController.text = widget.initialAppointmentData!['scheduled_time'] ?? ''; // Pre-fill scheduled time
-    }
+    // Don't pre-fill here, do it after leads are fetched
+    _fetchLeads().then((_) {
+      if (widget.initialAppointmentData != null) {
+        // Find if the pre-filled customer_name exists in the fetched leads
+        final initialCustomerName = widget.initialAppointmentData!['customer_name'];
+        if (_leads.any((lead) => lead['name'] == initialCustomerName)) {
+          _selectedLead = initialCustomerName;
+        } else {
+          _selectedLead = null; // Set to null if not found to avoid assertion error
+        }
+        _selectedStatus = widget.initialAppointmentData!['status'];
+        _scheduledTimeController.text = widget.initialAppointmentData!['scheduled_time'] ?? '';
+        setState(() {}); // Trigger rebuild to update dropdowns
+      }
+    });
   }
 
   Future<void> _fetchLeads() async {
@@ -76,7 +85,7 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
         Get.snackbar('Error', 'Failed to fetch leads');
       }
     } on dio_package.DioException catch (e) {
-      Get.snackbar('Error', e.response?.data['message'] ?? 'An error occurred');
+      Get.offAll(() => ErrorPage(errorMessage: e.response?.data['message'] ?? 'Failed to fetch leads. Contact admin.'));
     } finally {
       setState(() {
         _isLoading = false;
@@ -161,8 +170,7 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
           Get.snackbar('Error', '$errorMessage: ${response.statusMessage}');
         }
       } on dio_package.DioException catch (e) {
-        Get.snackbar(
-            'Error', e.response?.data['message'] ?? 'An error occurred');
+        Get.offAll(() => ErrorPage(errorMessage: e.response?.data['message'] ?? 'Failed to save appointment. Contact admin.'));
       } finally {
         setState(() {
           _isLoading = false;

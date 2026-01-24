@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import 'package:dio/dio.dart' as dio_package;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
+import 'package:frappe_flutter/error_page.dart';
 
 class NewLeadPage extends StatefulWidget {
   final VoidCallback onLeadCreated;
@@ -51,23 +52,49 @@ class _NewLeadPageState extends State<NewLeadPage> {
   @override
   void initState() {
     super.initState();
-    _fetchLeadSources();
-    _fetchProducts();
+    _initDataAndPrefill();
+  }
+
+  Future<void> _initDataAndPrefill() async {
+    // Fetch sources and products first
+    await _fetchLeadSources();
+    await _fetchProducts();
 
     if (widget.initialLeadData != null) {
       _firstNameController.text = widget.initialLeadData!['first_name'] ?? '';
       _phoneController.text = widget.initialLeadData!['mobile_no'] ?? '';
-      _selectedStatus = widget.initialLeadData!['status'];
-      _selectedSource = widget.initialLeadData!['source'];
+
+      // Validate and set _selectedStatus
+      final initialStatus = widget.initialLeadData!['status'];
+      if (['Lead', 'Converted', 'Follow Up', 'Not Interested'].contains(initialStatus)) {
+        _selectedStatus = initialStatus;
+      } else {
+        _selectedStatus = null;
+      }
+
+      // Validate and set _selectedSource
+      final initialSource = widget.initialLeadData!['source'];
+      if (_leadSources.any((source) => source['name'] == initialSource)) {
+        _selectedSource = initialSource;
+      } else {
+        _selectedSource = null;
+      }
 
       // Handle product table if it exists
       final productTable = widget.initialLeadData!['custom_product_table'];
       if (productTable != null && productTable.isNotEmpty) {
-        final product = productTable[0]; // Assuming only one product per lead for simplicity
-        _selectedProduct = product['product'];
-        _selectedProductName = product['product_name'];
+        final product = productTable[0];
+        final initialProduct = product['product'];
+        if (_products.any((p) => p['name'] == initialProduct)) {
+          _selectedProduct = initialProduct;
+          _selectedProductName = product['product_name'];
+        } else {
+          _selectedProduct = null;
+          _selectedProductName = null;
+        }
         _productAmountController.text = product['product_amount']?.toString() ?? '';
       }
+      setState(() {}); // Trigger rebuild to update dropdowns
     }
   }
 
@@ -99,8 +126,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
         });
       }
     } on dio_package.DioException catch (e) {
-      Get.snackbar('Error',
-          e.response?.data['message'] ?? 'Could not fetch lead sources.');
+      Get.offAll(() => ErrorPage(errorMessage: e.response?.data['message'] ?? 'Failed to fetch lead sources. Contact admin.'));
     } finally {
       setState(() {
         _sourcesLoading = false;
@@ -136,8 +162,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
         });
       }
     } on dio_package.DioException catch (e) {
-      Get.snackbar(
-          'Error', e.response?.data['message'] ?? 'Could not fetch products.');
+      Get.offAll(() => ErrorPage(errorMessage: e.response?.data['message'] ?? 'Failed to fetch products. Contact admin.'));
     } finally {
       setState(() {
         _productsLoading = false;
@@ -227,8 +252,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
         Get.snackbar('Error', '$errorMessage: ${response.statusMessage}');
       }
         } on dio_package.DioException catch (e) {
-          Get.snackbar(
-              'Error', e.response?.data?['message'] ?? 'An error occurred');
+          Get.offAll(() => ErrorPage(errorMessage: e.response?.data?['message'] ?? 'Failed to save lead. Contact admin.'));
         } finally {
       setState(() {
         _isLoading = false;
