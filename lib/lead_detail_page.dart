@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:frappe_flutter/new_lead_page.dart';
 
 class LeadDetailPage extends StatefulWidget {
   final String leadName;
@@ -109,6 +110,22 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
                         _buildAppointmentTab(),
                       ],
                     ),
+      floatingActionButton: _leadDetails != null
+          ? FloatingActionButton.extended(
+              onPressed: () async {
+                if (_leadDetails != null) {
+                  await Get.to(() => NewLeadPage(
+                    initialLeadData: _leadDetails!,
+                    onLeadCreated: _fetchLeadDetails, // Use _fetchLeadDetails as callback for update
+                  ));
+                  _fetchLeadDetails(); // Refresh details after returning from NewLeadPage
+                }
+              },
+              label: const Text('Update Lead'),
+              icon: const Icon(Icons.edit),
+              backgroundColor: const Color(0xFF006767),
+            )
+          : null,
     );
   }
 
