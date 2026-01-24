@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
+import 'package:dio/dio.dart';
+
 import 'home_page.dart';
 import 'login_page.dart';
 
@@ -46,12 +48,33 @@ class CheckSessionState extends State<CheckSession> {
     final sid = await _secureStorage.read(key: 'sid');
     final fullName = await _secureStorage.read(key: 'fullName');
     final email = await _secureStorage.read(key: 'email');
+    final Dio dio = Dio();
 
-    // A small delay to avoid a jarring transition
     await Future.delayed(const Duration(seconds: 1));
 
     if (sid != null && fullName != null && email != null) {
-      Get.offAll(() => HomePage(fullName: fullName, email: email));
+      try {
+        final userResponse = await dio.get(
+          'https://mysahayog.com/api/method/frappe.auth.get_logged_user',
+          options: Options(
+            headers: {'Cookie': 'sid=$sid'},
+          ),
+        );
+        final loggedInUser = userResponse.data['message'];
+
+        if (loggedInUser != null) {
+          final isAdmin = (loggedInUser.toLowerCase() == 'administrator');
+          await _secureStorage.write(key: 'isAdmin', value: isAdmin.toString());
+
+          Get.offAll(() => HomePage(fullName: fullName, email: email, isAdmin: isAdmin));
+        } else {
+          Get.snackbar('Error', 'Could not retrieve logged in user.');
+          Get.offAll(() => const LoginPage());
+        }
+      } on DioException catch (e) {
+        Get.snackbar('Error', e.response?.data['message'] ?? 'Authentication failed.');
+        Get.offAll(() => const LoginPage());
+      }
     } else {
       Get.offAll(() => const LoginPage());
     }

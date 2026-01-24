@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'home_page.dart';
 
+
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -53,9 +54,16 @@ class _LoginPageState extends State<LoginPage> {
                   key: 'email', value: _emailController.text);
             }
           }
+          final loggedInUser = response.data['full_name']; // Use full_name from login response
+          final isAdmin = (loggedInUser.toLowerCase() == 'administrator'); // Simplified check
+
+          // Store isAdmin in secure storage (optional, but good for consistency)
+          await _secureStorage.write(key: 'isAdmin', value: isAdmin.toString());
+
           Get.off(() => HomePage(
                 fullName: response.data['full_name'],
                 email: _emailController.text,
+                isAdmin: isAdmin,
               ));
         } else {
           Get.snackbar(

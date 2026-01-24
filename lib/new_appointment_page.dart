@@ -1,3 +1,5 @@
+// ignore_for_file: use_build_context_synchronously
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
@@ -93,12 +95,13 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
           ),
         );
 
-        // ignore: use_build_context_synchronously
         if (response.statusCode == 200) {
           if (!mounted) return;
-          Get.snackbar('Success', 'Appointment created successfully');
-          Get.back(); // Moved after snackbar
-          widget.onAppointmentCreated?.call();
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            Get.snackbar('Success', 'Appointment created successfully');
+            Get.back();
+            widget.onAppointmentCreated?.call();
+          });
         }
       } on DioException catch (e) {
         Get.snackbar(
