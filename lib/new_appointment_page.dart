@@ -93,9 +93,9 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
         );
 
         if (response.statusCode == 200) {
+          Get.back();
           Get.snackbar('Success', 'Appointment created successfully');
           widget.onAppointmentCreated?.call();
-          Get.back();
         }
       } on DioException catch (e) {
         Get.snackbar('Error', e.response?.data['message'] ?? 'An error occurred');
