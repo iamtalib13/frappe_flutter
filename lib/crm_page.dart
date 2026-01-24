@@ -427,20 +427,20 @@ class _CrmPageState extends State<CrmPage> {
       return const Center(child: Text('No Leads Found'));
     }
 
-    final List<dynamic> _filteredLeads = _currentFilterStatus == 'All'
+    final List<dynamic> filteredLeads = _currentFilterStatus == 'All'
         ? _leads
         : _leads
             .where((lead) => lead['status'] == _currentFilterStatus)
             .toList();
 
-    if (_filteredLeads.isEmpty) {
-      return Center(child: Text('No ${_currentFilterStatus} Leads Found'));
+    if (filteredLeads.isEmpty) {
+      return Center(child: Text('No $_currentFilterStatus Leads Found'));
     }
 
     return ListView.builder(
-      itemCount: _filteredLeads.length,
+      itemCount: filteredLeads.length,
       itemBuilder: (context, index) {
-        final lead = _filteredLeads[index];
+        final lead = filteredLeads[index];
         return InkWell(
           // Added InkWell
           onTap: () {
@@ -764,14 +764,14 @@ class _CrmPageState extends State<CrmPage> {
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Rating Criteria',
+                      children: const [
+                        Text('Rating Criteria',
                             style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        const Text('Good: At least 1 converted.'),
-                        const Text(
+                        SizedBox(height: 8),
+                        Text('Good: At least 1 converted.'),
+                        Text(
                             'Average: At least 4 follow-ups and none converted.'),
-                        const Text('Bad: Neither above.'),
+                        Text('Bad: Neither above.'),
                       ],
                     ),
                   ),
@@ -784,12 +784,12 @@ class _CrmPageState extends State<CrmPage> {
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Qualification Criteria',
+                      children: const [
+                        Text('Qualification Criteria',
                             style: TextStyle(fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 8),
-                        const Text('Qualified: At least 10 leads.'),
-                        const Text('Disqualified: Less than 10 leads.'),
+                        SizedBox(height: 8),
+                        Text('Qualified: At least 10 leads.'),
+                        Text('Disqualified: Less than 10 leads.'),
                       ],
                     ),
                   ),
@@ -812,27 +812,6 @@ class _CrmPageState extends State<CrmPage> {
         ),
         Text(title),
       ],
-    );
-  }
-
-  Widget _buildDetailRow(String label, String? value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              '$label:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          Expanded(
-            child: Text(value ?? 'N/A'),
-          ),
-        ],
-      ),
     );
   }
 }

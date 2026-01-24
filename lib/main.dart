@@ -30,10 +30,10 @@ class CheckSession extends StatefulWidget {
   const CheckSession({super.key});
 
   @override
-  _CheckSessionState createState() => _CheckSessionState();
+  CheckSessionState createState() => CheckSessionState();
 }
 
-class _CheckSessionState extends State<CheckSession> {
+class CheckSessionState extends State<CheckSession> {
   final _secureStorage = const FlutterSecureStorage();
 
   @override
