@@ -256,18 +256,19 @@ class _CrmPageState extends State<CrmPage> {
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: 'Search...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8.0),
+          if (_selectedIndex == 0 || _selectedIndex == 1)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
                 ),
               ),
             ),
-          ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0),
             child: Row(
@@ -663,21 +664,9 @@ class _CrmPageState extends State<CrmPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildDetailRow('Employee ID', _employeeDetails!['employee']),
-                  _buildDetailRow('Employee', _employeeDetails!['employee_name']),
-                  _buildDetailRow('Designation', _employeeDetails!['designation']),
-                  _buildDetailRow('Branch', _employeeDetails!['branch']),
-                  _buildDetailRow('Region', _employeeDetails!['custom_region']),
-                  _buildDetailRow('Zone', _employeeDetails!['custom_zone']),
-                ],
-              ),
-            ),
+          const Text(
+            'Daily Sales Report',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Row(
@@ -692,15 +681,53 @@ class _CrmPageState extends State<CrmPage> {
           const SizedBox(height: 16),
           Row(
             children: [
+    Expanded(
+    child: Card(
+    child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                children: [
+                  const Text('Rating', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Text(rating),
+                ],
+              ),
+            ),
+          ),
+        ),
+
+          const SizedBox(height: 16),
+    Expanded(
+    child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        const Text('Qualification', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        Text(qualification),
+                      ],
+                    ),
+                  ),
+          ),
+        ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
               Expanded(
                 child: Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Rating', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text('Rating Criteria', style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
-                        Text(rating),
+                        const Text('Good: At least 1 converted.'),
+                        const Text('Average: At least 4 follow-ups and none converted.'),
+                        const Text('Bad: Neither above.'),
                       ],
                     ),
                   ),
@@ -712,10 +739,12 @@ class _CrmPageState extends State<CrmPage> {
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Qualification', style: TextStyle(fontWeight: FontWeight.bold)),
+                        const Text('Qualification Criteria', style: TextStyle(fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
-                        Text(qualification),
+                        const Text('Qualified: At least 10 leads.'),
+                        const Text('Disqualified: Less than 10 leads.'),
                       ],
                     ),
                   ),
@@ -724,17 +753,8 @@ class _CrmPageState extends State<CrmPage> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Today\'s Lead IDs',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          _todaysLeads.isEmpty
-              ? const Text('No leads created today.')
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: _todaysLeads.map((lead) => Text(lead['name'])).toList(),
-                ),
+
+
         ],
       ),
     );
