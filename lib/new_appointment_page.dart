@@ -2,15 +2,20 @@
 
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:dio/dio.dart';
+import 'package:dio/dio.dart' as dio_package;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 
 class NewAppointmentPage extends StatefulWidget {
   final VoidCallback? onAppointmentCreated;
+  final Map<String, dynamic>? initialAppointmentData;
 
-  const NewAppointmentPage({super.key, this.onAppointmentCreated});
+  const NewAppointmentPage({
+    super.key,
+    this.onAppointmentCreated,
+    this.initialAppointmentData,
+  });
 
   @override
   State<NewAppointmentPage> createState() => _NewAppointmentPageState();
@@ -18,7 +23,7 @@ class NewAppointmentPage extends StatefulWidget {
 
 class _NewAppointmentPageState extends State<NewAppointmentPage> {
   final _formKey = GlobalKey<FormState>();
-  final _dio = Dio();
+  final _dio = dio_package.Dio();
   final _secureStorage = const FlutterSecureStorage();
 
   String? _selectedLead;
@@ -32,7 +37,13 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
   @override
   void initState() {
     super.initState();
-    _fetchLeads();
+    _fetchLeads(); // Still need to fetch leads for the dropdown
+
+    if (widget.initialAppointmentData != null) {
+      _selectedLead = widget.initialAppointmentData!['customer_name']; // Pre-fill customer name
+      _selectedStatus = widget.initialAppointmentData!['status']; // Pre-fill status
+      _scheduledTimeController.text = widget.initialAppointmentData!['scheduled_time'] ?? ''; // Pre-fill scheduled time
+    }
   }
 
   Future<void> _fetchLeads() async {
@@ -52,7 +63,7 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
         queryParameters: {
           'fields': jsonEncode(['name', 'first_name']),
         },
-        options: Options(
+        options: dio_package.Options(
           headers: {'Cookie': 'sid=$sid'},
         ),
       );
@@ -64,7 +75,7 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
       } else {
         Get.snackbar('Error', 'Failed to fetch leads');
       }
-    } on DioException catch (e) {
+    } on dio_package.DioException catch (e) {
       Get.snackbar('Error', e.response?.data['message'] ?? 'An error occurred');
     } finally {
       setState(() {
@@ -81,29 +92,75 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
 
       try {
         final sid = await _secureStorage.read(key: 'sid');
-        final response = await _dio.post(
-          'https://mysahayog.com/api/resource/Appointment',
-          data: {
-            'customer_name': _selectedLead,
-            'status': _selectedStatus,
-            'scheduled_time': _scheduledTimeController.text,
-            'appointment_with': 'Lead',
-            'party': _selectedLead,
-          },
-          options: Options(
-            headers: {'Cookie': 'sid=$sid'},
-          ),
-        );
+        if (sid == null) {
+          Get.snackbar('Error', 'Session expired. Please log in again.');
+          setState(() {
+            _isLoading = false;
+          });
+          return;
+        }
+
+        final isUpdating = widget.initialAppointmentData != null;
+        final String apiUrl;
+        final String successMessage;
+        final String errorMessage;
+        final String requestMethod;
+
+        if (isUpdating) {
+          final appointmentName = widget.initialAppointmentData!['name'];
+          apiUrl = 'https://mysahayog.com/api/resource/Appointment/$appointmentName';
+          successMessage = 'Appointment updated successfully';
+          errorMessage = 'Failed to update appointment';
+          requestMethod = 'PUT'; // Frappe uses PUT for updates
+        } else {
+          apiUrl = 'https://mysahayog.com/api/resource/Appointment';
+          successMessage = 'Appointment created successfully';
+          errorMessage = 'Failed to create appointment';
+          requestMethod = 'POST';
+        }
+
+        final appointmentData = {
+          'customer_name': _selectedLead,
+          'status': _selectedStatus,
+          'scheduled_time': _scheduledTimeController.text,
+          'appointment_with': 'Lead',
+          'party': _selectedLead,
+        };
+
+        dio_package.Response response;
+        if (requestMethod == 'PUT') {
+          response = await _dio.put(
+            apiUrl,
+            data: appointmentData,
+            options: dio_package.Options(
+              headers: {'Cookie': 'sid=$sid'},
+              contentType: 'application/json',
+            ),
+          );
+        } else {
+          response = await _dio.post(
+            apiUrl,
+            data: appointmentData,
+            options: dio_package.Options(
+              headers: {'Cookie': 'sid=$sid'},
+              contentType: 'application/json',
+            ),
+          );
+        }
 
         if (response.statusCode == 200) {
           if (!mounted) return;
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Get.snackbar('Success', 'Appointment created successfully');
+            // ignore: use_build_context_synchronously
+            Get.snackbar('Success', successMessage);
+            // ignore: use_build_context_synchronously
             Get.back();
             widget.onAppointmentCreated?.call();
           });
+        } else {
+          Get.snackbar('Error', '$errorMessage: ${response.statusMessage}');
         }
-      } on DioException catch (e) {
+      } on dio_package.DioException catch (e) {
         Get.snackbar(
             'Error', e.response?.data['message'] ?? 'An error occurred');
       } finally {
@@ -118,7 +175,7 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Appointment'),
+        title: Text(widget.initialAppointmentData != null ? 'Edit Appointment' : 'New Appointment'),
         backgroundColor: const Color(0xFF006767),
       ),
       body: _isLoading
