@@ -1,13 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:dio/dio.dart';
+import 'package:dio/dio.dart' as dio_package;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 
 class NewLeadPage extends StatefulWidget {
   final VoidCallback onLeadCreated;
+  final Map<String, dynamic>? initialLeadData;
 
-  const NewLeadPage({super.key, required this.onLeadCreated});
+  const NewLeadPage({
+    super.key,
+    required this.onLeadCreated,
+    this.initialLeadData,
+  });
 
   @override
   State<NewLeadPage> createState() => _NewLeadPageState();
@@ -15,7 +20,7 @@ class NewLeadPage extends StatefulWidget {
 
 class _NewLeadPageState extends State<NewLeadPage> {
   final _formKey = GlobalKey<FormState>();
-  final _dio = Dio();
+  final _dio = dio_package.Dio();
   final _secureStorage = const FlutterSecureStorage();
 
   // Form Controllers
@@ -30,11 +35,15 @@ class _NewLeadPageState extends State<NewLeadPage> {
   String? _selectedProductName;
 
   // State for lead sources dropdown
+  // ignore: prefer_final_fields
   List<Map<String, dynamic>> _leadSources = [];
+  // ignore: prefer_final_fields
   bool _sourcesLoading = true;
 
   // State for products dropdown
+  // ignore: prefer_final_fields
   List<Map<String, dynamic>> _products = [];
+  // ignore: prefer_final_fields
   bool _productsLoading = true;
 
   bool _isLoading = false;
@@ -44,6 +53,22 @@ class _NewLeadPageState extends State<NewLeadPage> {
     super.initState();
     _fetchLeadSources();
     _fetchProducts();
+
+    if (widget.initialLeadData != null) {
+      _firstNameController.text = widget.initialLeadData!['first_name'] ?? '';
+      _phoneController.text = widget.initialLeadData!['mobile_no'] ?? '';
+      _selectedStatus = widget.initialLeadData!['status'];
+      _selectedSource = widget.initialLeadData!['source'];
+
+      // Handle product table if it exists
+      final productTable = widget.initialLeadData!['custom_product_table'];
+      if (productTable != null && productTable.isNotEmpty) {
+        final product = productTable[0]; // Assuming only one product per lead for simplicity
+        _selectedProduct = product['product'];
+        _selectedProductName = product['product_name'];
+        _productAmountController.text = product['product_amount']?.toString() ?? '';
+      }
+    }
   }
 
   Future<void> _fetchLeadSources() async {
@@ -63,7 +88,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
         queryParameters: {
           'fields': jsonEncode(['name']),
         },
-        options: Options(
+        options: dio_package.Options(
           headers: {'Cookie': 'sid=$sid'},
         ),
       );
@@ -73,7 +98,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
           _leadSources = List<Map<String, dynamic>>.from(response.data['data']);
         });
       }
-    } on DioException catch (e) {
+    } on dio_package.DioException catch (e) {
       Get.snackbar('Error',
           e.response?.data['message'] ?? 'Could not fetch lead sources.');
     } finally {
@@ -100,7 +125,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
           'fields': jsonEncode(['name', 'product_name']),
           'limit_page_length': 100
         },
-        options: Options(
+        options: dio_package.Options(
           headers: {'Cookie': 'sid=$sid'},
         ),
       );
@@ -110,7 +135,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
           _products = List<Map<String, dynamic>>.from(response.data['data']);
         });
       }
-    } on DioException catch (e) {
+    } on dio_package.DioException catch (e) {
       Get.snackbar(
           'Error', e.response?.data['message'] ?? 'Could not fetch products.');
     } finally {
@@ -139,6 +164,25 @@ class _NewLeadPageState extends State<NewLeadPage> {
         return;
       }
 
+      final isUpdating = widget.initialLeadData != null;
+      final String apiUrl;
+      final String successMessage;
+      final String errorMessage;
+      final String requestMethod;
+
+      if (isUpdating) {
+        final leadName = widget.initialLeadData!['name'];
+        apiUrl = 'https://mysahayog.com/api/resource/Lead/$leadName';
+        successMessage = 'Lead updated successfully';
+        errorMessage = 'Failed to update lead';
+        requestMethod = 'PUT'; // Frappe uses PUT for updates
+      } else {
+        apiUrl = 'https://mysahayog.com/api/resource/Lead';
+        successMessage = 'Lead created successfully';
+        errorMessage = 'Failed to create lead';
+        requestMethod = 'POST';
+      }
+
       final leadData = {
         'doctype': 'Lead',
         'first_name': _firstNameController.text,
@@ -154,27 +198,38 @@ class _NewLeadPageState extends State<NewLeadPage> {
         ]
       };
 
-      final response = await _dio.post(
-        'https://mysahayog.com/api/resource/Lead',
-        data: leadData,
-        options: Options(
-          headers: {'Cookie': 'sid=$sid'},
-          contentType: 'application/json',
-        ),
-      );
+      dio_package.Response response; // Specify Dio's Response
+      if (requestMethod == 'PUT') {
+        response = await _dio.put(
+          apiUrl,
+          data: leadData,
+          options: dio_package.Options(
+            headers: {'Cookie': 'sid=$sid'},
+            contentType: 'application/json',
+          ),
+        );
+      } else {
+        response = await _dio.post(
+          apiUrl,
+          data: leadData,
+          options: dio_package.Options(
+            headers: {'Cookie': 'sid=$sid'},
+            contentType: 'application/json',
+          ),
+        );
+      }
 
       if (response.statusCode == 200) {
-        widget.onLeadCreated();
+        widget.onLeadCreated(); // This callback will now also act as onLeadUpdated
         Get.back();
-        Get.snackbar('Success', 'Lead created successfully');
+        Get.snackbar('Success', successMessage);
       } else {
-        Get.snackbar(
-            'Error', 'Failed to create lead: ${response.statusMessage}');
+        Get.snackbar('Error', '$errorMessage: ${response.statusMessage}');
       }
-    } on DioException catch (e) {
-      Get.snackbar(
-          'Error', e.response?.data?['message'] ?? 'An error occurred');
-    } finally {
+        } on dio_package.DioException catch (e) {
+          Get.snackbar(
+              'Error', e.response?.data?['message'] ?? 'An error occurred');
+        } finally {
       setState(() {
         _isLoading = false;
       });
@@ -185,7 +240,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('New Lead'),
+        title: Text(widget.initialLeadData != null ? 'Edit Lead' : 'New Lead'),
         backgroundColor: const Color(0xFF006767),
       ),
       body: SingleChildScrollView(
