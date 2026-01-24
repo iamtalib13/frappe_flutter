@@ -8,11 +8,13 @@ import 'crm_page.dart';
 class HomePage extends StatefulWidget {
   final String fullName;
   final String email;
+  final bool isAdmin;
 
   const HomePage({
     super.key,
     required this.fullName,
     required this.email,
+    required this.isAdmin,
   });
 
   @override
@@ -53,8 +55,10 @@ class _HomePageState extends State<HomePage> {
         padding: const EdgeInsets.all(8.0),
         child: Row(
           children: [
-            _buildCard('Reset Password', Icons.lock_reset),
-            const SizedBox(width: 8.0),
+            if (widget.isAdmin)
+              _buildCard('Reset Password', Icons.lock_reset),
+            if (widget.isAdmin)
+              const SizedBox(width: 8.0),
             _buildCard('CRM', Icons.business),
           ],
         ),
