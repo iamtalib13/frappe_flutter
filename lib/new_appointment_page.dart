@@ -93,10 +93,11 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
           ),
         );
 
+        // ignore: use_build_context_synchronously
         if (response.statusCode == 200) {
           if (!mounted) return;
-          Get.back();
           Get.snackbar('Success', 'Appointment created successfully');
+          Get.back(); // Moved after snackbar
           widget.onAppointmentCreated?.call();
         }
       } on DioException catch (e) {
@@ -129,6 +130,7 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
                     DropdownButtonFormField<String>(
                       decoration:
                           const InputDecoration(labelText: 'Customer Name'),
+                      // ignore: deprecated_member_use
                       value: _selectedLead,
                       items: _leads.map<DropdownMenuItem<String>>((lead) {
                         return DropdownMenuItem<String>(
@@ -147,6 +149,7 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
                     const SizedBox(height: 16),
                     DropdownButtonFormField<String>(
                       decoration: const InputDecoration(labelText: 'Status'),
+                      // ignore: deprecated_member_use
                       value: _selectedStatus,
                       items: ['Open', 'Unverified', 'Close']
                           .map<DropdownMenuItem<String>>((status) {

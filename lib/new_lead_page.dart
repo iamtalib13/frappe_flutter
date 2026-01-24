@@ -203,6 +203,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
+                // ignore: deprecated_member_use
                 value: _selectedStatus,
                 decoration: const InputDecoration(labelText: 'Status'),
                 hint: const Text('Select Status'),
@@ -223,6 +224,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
+                // ignore: deprecated_member_use
                 value: _selectedSource,
                 decoration: InputDecoration(
                   labelText: 'Lead Source',
@@ -264,6 +266,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
+                // ignore: deprecated_member_use
                 value: _selectedProduct,
                 isExpanded: true,
                 decoration: InputDecoration(
