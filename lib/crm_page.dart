@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:frappe_flutter/models/lead_model.dart';
+import 'package:frappe_flutter/models/sync_status.dart';
+import 'package:frappe_flutter/services/isar_service.dart';
+import 'package:frappe_flutter/services/sync_service.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart'; // Add this import
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Add this import
@@ -21,9 +25,12 @@ class _CrmPageState extends State<CrmPage> {
   final PageController _pageController = PageController();
   final Dio _dio = Dio();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
+  final IsarService _isarService = IsarService();
+  final SyncService _syncService = SyncService();
 
-  List<dynamic> _leads = [];
+  List<Lead> _leads = [];
   bool _leadsLoading = false;
+  bool _isLoadingMore = false;
   String _currentFilterStatus = 'All'; // Add this
 
   List<dynamic> _appointments = [];
@@ -181,6 +188,37 @@ class _CrmPageState extends State<CrmPage> {
       _leadsLoading = true;
     });
 
+    _leads = await _isarService.getAllLeads();
+
+    setState(() {
+      // Calculate counts for Lead filters
+      int allCount = _leads.length;
+      int leadCount =
+          _leads.where((lead) => lead.status == 'Lead').length;
+      int convertedCount =
+          _leads.where((lead) => lead.status == 'Converted').length;
+      int followUpCount =
+          _leads.where((lead) => lead.status == 'Follow Up').length;
+      int notInterestedCount =
+          _leads.where((lead) => lead.status == 'Not Interested').length;
+
+      // Update the _filters list for the Lead tab (index 0)
+      _filters[0] = [
+        'All ($allCount)',
+        'Lead ($leadCount)',
+        'Converted ($convertedCount)',
+        'Follow Up ($followUpCount)',
+        'Not Interested ($notInterestedCount)',
+      ];
+      _leadsLoading = false;
+    });
+  }
+
+  Future<void> _loadMoreLeads() async {
+    setState(() {
+      _isLoadingMore = true;
+    });
+
     try {
       final sid = await _secureStorage.read(key: 'sid');
       if (sid == null) {
@@ -196,11 +234,12 @@ class _CrmPageState extends State<CrmPage> {
             'first_name',
             'status',
             'mobile_no',
-            'custom_branch',
             'source',
             'modified',
             'custom_product_table',
           ]),
+          'limit_start': _leads.length,
+          'limit_page_length': 20,
         },
         options: Options(
           headers: {'Cookie': 'sid=$sid'},
@@ -208,40 +247,41 @@ class _CrmPageState extends State<CrmPage> {
       );
 
       if (response.statusCode == 200) {
-        setState(() {
-          _leads = response.data['data'];
+        final List<dynamic> newLeadsData = response.data['data'];
+        final List<Lead> newLeads = newLeadsData.map((leadData) {
+          final productTable = leadData['custom_product_table'];
+          return Lead()
+            ..name = leadData['name']
+            ..firstName = leadData['first_name']
+            ..status = leadData['status']
+            ..mobileNo = leadData['mobile_no']
+            ..source = leadData['source']
+            ..lastModified = DateTime.parse(leadData['modified'])
+            ..product = productTable != null && productTable.isNotEmpty
+                ? productTable[0]['product']
+                : null
+            ..productName = productTable != null && productTable.isNotEmpty
+                ? productTable[0]['product_name']
+                : null
+            ..productAmount = productTable != null && productTable.isNotEmpty
+                ? (productTable[0]['product_amount'] as num?)?.toDouble()
+                : null
+            ..syncStatus = SyncStatus.synced;
+        }).toList();
 
-          // Calculate counts for Lead filters
-          int allCount = _leads.length;
-          int leadCount =
-              _leads.where((lead) => lead['status'] == 'Lead').length;
-          int convertedCount =
-              _leads.where((lead) => lead['status'] == 'Converted').length;
-          int followUpCount =
-              _leads.where((lead) => lead['status'] == 'Follow Up').length;
-          int notInterestedCount =
-              _leads.where((lead) => lead['status'] == 'Not Interested').length;
-
-          // Update the _filters list for the Lead tab (index 0)
-          _filters[0] = [
-            'All ($allCount)',
-            'Lead ($leadCount)',
-            'Converted ($convertedCount)',
-            'Follow Up ($followUpCount)',
-            'Not Interested ($notInterestedCount)',
-          ];
-        });
+        await _isarService.saveLeads(newLeads);
+        _fetchLeads();
       } else {
-        Get.snackbar('Error', 'Failed to fetch leads');
+        Get.snackbar('Error', 'Failed to fetch more leads');
       }
     } on DioException catch (e) {
       Get.snackbar(
           'Error',
           e.response?.data['message'] ??
-              'An error occurred while fetching leads');
+              'An error occurred while fetching more leads');
     } finally {
       setState(() {
-        _leadsLoading = false;
+        _isLoadingMore = false;
       });
     }
   }
@@ -265,11 +305,11 @@ class _CrmPageState extends State<CrmPage> {
   @override
   Widget build(BuildContext context) {
     // Calculate filtered leads here for displaying count
-    final List<dynamic> currentFilteredLeads = _selectedIndex == 0
+    final List<Lead> currentFilteredLeads = _selectedIndex == 0
         ? (_currentFilterStatus == 'All'
             ? _leads
             : _leads
-                .where((lead) => lead['status'] == _currentFilterStatus)
+                .where((lead) => lead.status == _currentFilterStatus)
                 .toList())
         : [];
 
@@ -277,6 +317,16 @@ class _CrmPageState extends State<CrmPage> {
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
         backgroundColor: const Color(0xFF006767),
+        actions: [
+          if (_selectedIndex == 0)
+            IconButton(
+              icon: const Icon(Icons.sync),
+              onPressed: () async {
+                await _syncService.syncPendingLeads();
+                _fetchLeads();
+              },
+            ),
+        ],
       ),
       body: Column(
         children: [
@@ -427,61 +477,77 @@ class _CrmPageState extends State<CrmPage> {
       return const Center(child: Text('No Leads Found'));
     }
 
-    final List<dynamic> filteredLeads = _currentFilterStatus == 'All'
+    final List<Lead> filteredLeads = _currentFilterStatus == 'All'
         ? _leads
         : _leads
-            .where((lead) => lead['status'] == _currentFilterStatus)
+            .where((lead) => lead.status == _currentFilterStatus)
             .toList();
 
     if (filteredLeads.isEmpty) {
       return Center(child: Text('No $_currentFilterStatus Leads Found'));
     }
 
-    return ListView.builder(
-      itemCount: filteredLeads.length,
-      itemBuilder: (context, index) {
-        final lead = filteredLeads[index];
-        return InkWell(
-          // Added InkWell
-          onTap: () {
-            Get.to(() => LeadDetailPage(
-                leadName: lead['name'])); // Navigate to LeadDetailPage
-          },
-          child: Card(
-            margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    lead['first_name'] ?? 'N/A',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.0,
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            itemCount: filteredLeads.length,
+            itemBuilder: (context, index) {
+              final lead = filteredLeads[index];
+              return InkWell(
+                // Added InkWell
+                onTap: () {
+                  Get.to(() => LeadDetailPage(
+                      leadName: lead.name!)); // Navigate to LeadDetailPage
+                },
+                child: Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          lead.firstName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16.0,
+                          ),
+                        ),
+                        Text(lead.mobileNo ?? 'N/A'),
+                        const SizedBox(height: 8.0),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Status: ${lead.status ?? 'N/A'}'),
+                            Text('Sync Status: ${lead.syncStatus.name}'),
+                          ],
+                        ),
+                        const SizedBox(height: 8.0),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                              'Modified: ${lead.lastModified != null ? lead.lastModified.toString().split(' ')[0] : 'N/A'}'),
+                        ),
+                      ],
                     ),
                   ),
-                  Text(lead['mobile_no'] ?? 'N/A'),
-                  const SizedBox(height: 8.0),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Status: ${lead['status'] ?? 'N/A'}'),
-                      Text('Branch: ${lead['custom_branch'] ?? 'N/A'}'),
-                    ],
-                  ),
-                  const SizedBox(height: 8.0),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: Text(
-                        'Modified: ${lead['modified'] != null ? lead['modified'].split(' ')[0] : 'N/A'}'),
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+        if (_isLoadingMore)
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: CircularProgressIndicator(),
+          )
+        else
+          ElevatedButton(
+            onPressed: _loadMoreLeads,
+            child: const Text('Load More'),
+          ),
+      ],
     );
   }
 
