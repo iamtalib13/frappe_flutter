@@ -7,10 +7,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:frappe_flutter/error_page.dart';
+import 'package:frappe_flutter/models/appointment_model.dart';
+import 'package:frappe_flutter/models/sync_status.dart';
+import 'package:frappe_flutter/services/isar_service.dart';
 
 class NewAppointmentPage extends StatefulWidget {
   final VoidCallback? onAppointmentCreated;
-  final Map<String, dynamic>? initialAppointmentData;
+  final Appointment? initialAppointmentData;
 
   const NewAppointmentPage({
     super.key,
@@ -26,6 +29,7 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
   final _formKey = GlobalKey<FormState>();
   final _dio = dio_package.Dio();
   final _secureStorage = const FlutterSecureStorage();
+  final _isarService = IsarService();
 
   String? _selectedLead;
   String? _selectedStatus;
@@ -42,14 +46,14 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
     _fetchLeads().then((_) {
       if (widget.initialAppointmentData != null) {
         // Find if the pre-filled customer_name exists in the fetched leads
-        final initialCustomerName = widget.initialAppointmentData!['customer_name'];
+        final initialCustomerName = widget.initialAppointmentData!.customerName;
         if (_leads.any((lead) => lead['name'] == initialCustomerName)) {
           _selectedLead = initialCustomerName;
         } else {
           _selectedLead = null; // Set to null if not found to avoid assertion error
         }
-        _selectedStatus = widget.initialAppointmentData!['status'];
-        _scheduledTimeController.text = widget.initialAppointmentData!['scheduled_time'] ?? '';
+        _selectedStatus = widget.initialAppointmentData!.status;
+        _scheduledTimeController.text = DateFormat('yyyy-MM-dd HH:mm:ss').format(widget.initialAppointmentData!.scheduledTime);
         setState(() {}); // Trigger rebuild to update dropdowns
       }
     });
@@ -99,83 +103,26 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
         _isLoading = true;
       });
 
-      try {
-        final sid = await _secureStorage.read(key: 'sid');
-        if (sid == null) {
-          Get.snackbar('Error', 'Session expired. Please log in again.');
-          setState(() {
-            _isLoading = false;
-          });
-          return;
-        }
+      final isUpdating = widget.initialAppointmentData != null;
+      final appointment = isUpdating ? widget.initialAppointmentData! : Appointment();
 
-        final isUpdating = widget.initialAppointmentData != null;
-        final String apiUrl;
-        final String successMessage;
-        final String errorMessage;
-        final String requestMethod;
+      appointment
+        ..customerName = _selectedLead!
+        ..scheduledTime = DateTime.parse(_scheduledTimeController.text)
+        ..status = _selectedStatus
+        ..syncStatus = SyncStatus.pending
+        ..lastModified = DateTime.now();
 
-        if (isUpdating) {
-          final appointmentName = widget.initialAppointmentData!['name'];
-          apiUrl = 'https://mysahayog.com/api/resource/Appointment/$appointmentName';
-          successMessage = 'Appointment updated successfully';
-          errorMessage = 'Failed to update appointment';
-          requestMethod = 'PUT'; // Frappe uses PUT for updates
-        } else {
-          apiUrl = 'https://mysahayog.com/api/resource/Appointment';
-          successMessage = 'Appointment created successfully';
-          errorMessage = 'Failed to create appointment';
-          requestMethod = 'POST';
-        }
+      await _isarService.saveAppointment(appointment);
 
-        final appointmentData = {
-          'customer_name': _selectedLead,
-          'status': _selectedStatus,
-          'scheduled_time': _scheduledTimeController.text,
-          'appointment_with': 'Lead',
-          'party': _selectedLead,
-        };
+      widget.onAppointmentCreated?.call();
+      Get.back(result: true);
+      Get.snackbar(
+          'Success', isUpdating ? 'Appointment updated locally.' : 'Appointment saved locally.');
 
-        dio_package.Response response;
-        if (requestMethod == 'PUT') {
-          response = await _dio.put(
-            apiUrl,
-            data: appointmentData,
-            options: dio_package.Options(
-              headers: {'Cookie': 'sid=$sid'},
-              contentType: 'application/json',
-            ),
-          );
-        } else {
-          response = await _dio.post(
-            apiUrl,
-            data: appointmentData,
-            options: dio_package.Options(
-              headers: {'Cookie': 'sid=$sid'},
-              contentType: 'application/json',
-            ),
-          );
-        }
-
-        if (response.statusCode == 200) {
-          if (!mounted) return;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            // ignore: use_build_context_synchronously
-            Get.snackbar('Success', successMessage);
-            // ignore: use_build_context_synchronously
-            Get.back();
-            widget.onAppointmentCreated?.call();
-          });
-        } else {
-          Get.snackbar('Error', '$errorMessage: ${response.statusMessage}');
-        }
-      } on dio_package.DioException catch (e) {
-        Get.offAll(() => ErrorPage(errorMessage: e.response?.data['message'] ?? 'Failed to save appointment. Contact admin.'));
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      setState(() {
+        _isLoading = false;
+      });
     }
   }
 

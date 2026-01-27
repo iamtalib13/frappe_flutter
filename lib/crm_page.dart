@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:frappe_flutter/models/lead_model.dart';
+import 'package:frappe_flutter/models/appointment_model.dart'; // New import
 import 'package:frappe_flutter/models/sync_status.dart';
 import 'package:frappe_flutter/services/isar_service.dart';
 import 'package:frappe_flutter/services/sync_service.dart';
@@ -30,11 +31,12 @@ class _CrmPageState extends State<CrmPage> {
 
   List<Lead> _leads = [];
   bool _leadsLoading = false;
-  bool _isLoadingMore = false;
+  bool _isLoadingMoreLeads = false; // Changed from _isLoadingMore
   String _currentFilterStatus = 'All'; // Add this
 
-  List<dynamic> _appointments = [];
+  List<Appointment> _appointments = [];
   bool _appointmentsLoading = false;
+  bool _isLoadingMoreAppointments = false;
 
   Map<String, dynamic>? _employeeDetails;
   bool _reportLoading = false;
@@ -216,7 +218,7 @@ class _CrmPageState extends State<CrmPage> {
 
   Future<void> _loadMoreLeads() async {
     setState(() {
-      _isLoadingMore = true;
+      _isLoadingMoreLeads = true;
     });
 
     try {
@@ -281,7 +283,120 @@ class _CrmPageState extends State<CrmPage> {
               'An error occurred while fetching more leads');
     } finally {
       setState(() {
-        _isLoadingMore = false;
+        _isLoadingMoreLeads = false;
+      });
+    }
+  }
+
+  Future<void> _fetchAppointments() async {
+    setState(() {
+      _appointmentsLoading = true;
+    });
+
+    _appointments = await _isarService.getAllAppointments();
+
+    setState(() {
+      // --- Start Count Calculation ---
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+
+      int allCount = _appointments.length;
+      int todayCount = 0;
+      int dueCount = 0;
+      int upcomingCount = 0;
+      int openCount =
+          _appointments.where((a) => a.status == 'Open').length;
+      int closedCount =
+          _appointments.where((a) => a.status == 'Closed').length;
+
+      for (var appt in _appointments) {
+        final scheduledTime = appt.scheduledTime;
+        final scheduledDate = DateTime(
+            scheduledTime.year, scheduledTime.month, scheduledTime.day);
+
+        if (scheduledDate.isAtSameMomentAs(today)) {
+          todayCount++;
+        }
+
+        if (scheduledTime.isAfter(now)) {
+          upcomingCount++;
+        }
+
+        if (scheduledTime.isBefore(now) && appt.status != 'Closed') {
+          dueCount++;
+        }
+      }
+
+      // Update the _filters list for the Appointment tab (index 1)
+      _filters[1] = [
+        'All ($allCount)',
+        'Today ($todayCount)',
+        'Due ($dueCount)',
+        'Upcoming ($upcomingCount)',
+        'Open ($openCount)',
+        'Closed ($closedCount)',
+      ];
+      // --- End Count Calculation ---
+      _appointmentsLoading = false;
+    });
+  }
+
+  Future<void> _loadMoreAppointments() async {
+    setState(() {
+      _isLoadingMoreAppointments = true;
+    });
+
+    try {
+      final sid = await _secureStorage.read(key: 'sid');
+      if (sid == null) {
+        Get.snackbar('Error', 'Session expired. Please log in again.');
+        return;
+      }
+
+      final response = await _dio.get(
+        'https://mysahayog.com/api/resource/Appointment',
+        queryParameters: {
+          'fields': jsonEncode([
+            'name',
+            'customer_name',
+            'scheduled_time',
+            'status',
+            'modified',
+          ]),
+          'limit_start': _appointments.length,
+          'limit_page_length': 20,
+        },
+        options: Options(
+          headers: {'Cookie': 'sid=$sid'},
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> newAppointmentsData = response.data['data'];
+        final List<Appointment> newAppointments =
+            newAppointmentsData.map((apptData) {
+          return Appointment()
+            ..name = apptData['name']
+            ..customerName = apptData['customer_name']
+            ..scheduledTime = DateTime.parse(apptData['scheduled_time'])
+            ..status = apptData['status']
+            ..lastModified = DateTime.parse(apptData['modified'])
+            ..syncStatus = SyncStatus.synced;
+        }).toList();
+
+        await _isarService.saveAppointments(newAppointments);
+        _fetchAppointments();
+      } else {
+        Get.snackbar('Error', 'Failed to fetch more appointments');
+      }
+    } on DioException catch (e) {
+      Get.snackbar(
+          'Error',
+          e.response?.data['message'] ??
+              'An error occurred while fetching more appointments');
+    } finally {
+      setState(() {
+        _isLoadingMoreAppointments = false;
       });
     }
   }
@@ -313,6 +428,36 @@ class _CrmPageState extends State<CrmPage> {
                 .toList())
         : [];
 
+    final List<Appointment> currentFilteredAppointments = _selectedIndex == 1
+        ? (_currentFilterStatus == 'All'
+            ? _appointments
+            : _appointments.where((appt) {
+                final status = _currentFilterStatus.split(' (')[0];
+                if (status == 'All') {
+                  return true;
+                }
+                if (status == 'Open' || status == 'Closed') {
+                  return appt.status == status;
+                }
+                final now = DateTime.now();
+                final today = DateTime(now.year, now.month, now.day);
+                final scheduledTime = appt.scheduledTime;
+                final scheduledDate =
+                    DateTime(scheduledTime.year, scheduledTime.month, scheduledTime.day);
+
+                if (status == 'Today') {
+                  return scheduledDate.isAtSameMomentAs(today);
+                }
+                if (status == 'Upcoming') {
+                  return scheduledTime.isAfter(now);
+                }
+                if (status == 'Due') {
+                  return scheduledTime.isBefore(now) && appt.status != 'Closed';
+                }
+                return false;
+              }).toList())
+            : [];
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_selectedIndex]),
@@ -324,6 +469,14 @@ class _CrmPageState extends State<CrmPage> {
               onPressed: () async {
                 await _syncService.syncPendingLeads();
                 _fetchLeads();
+              },
+            ),
+          if (_selectedIndex == 1)
+            IconButton(
+              icon: const Icon(Icons.sync),
+              onPressed: () async {
+                await _syncService.syncPendingAppointments();
+                _fetchAppointments();
               },
             ),
         ],
@@ -404,7 +557,7 @@ class _CrmPageState extends State<CrmPage> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
             child: Text(
-                'Showing ${currentFilteredLeads.length} of ${_leads.length}'),
+                _selectedIndex == 0 ? 'Showing ${currentFilteredLeads.length} of ${_leads.length}' : 'Showing ${currentFilteredAppointments.length} of ${_appointments.length}'),
           ),
           _buildActionButtons(),
         ],
@@ -537,7 +690,7 @@ class _CrmPageState extends State<CrmPage> {
             },
           ),
         ),
-        if (_isLoadingMore)
+        if (_isLoadingMoreLeads)
           const Padding(
             padding: EdgeInsets.all(8.0),
             child: CircularProgressIndicator(),
@@ -551,100 +704,6 @@ class _CrmPageState extends State<CrmPage> {
     );
   }
 
-  Future<void> _fetchAppointments() async {
-    setState(() {
-      _appointmentsLoading = true;
-    });
-
-    try {
-      final sid = await _secureStorage.read(key: 'sid');
-      if (sid == null) {
-        Get.snackbar('Error', 'Session expired.');
-        return;
-      }
-
-      final response = await _dio.get(
-        'https://mysahayog.com/api/resource/Appointment',
-        queryParameters: {
-          'fields': jsonEncode([
-            'name',
-            'customer_name',
-            'scheduled_time',
-            'status',
-            'modified',
-          ]),
-        },
-        options: Options(
-          headers: {'Cookie': 'sid=$sid'},
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _appointments = response.data['data'];
-
-          // --- Start Count Calculation ---
-          final now = DateTime.now();
-          final today = DateTime(now.year, now.month, now.day);
-
-          int allCount = _appointments.length;
-          int todayCount = 0;
-          int dueCount = 0;
-          int upcomingCount = 0;
-          int openCount =
-              _appointments.where((a) => a['status'] == 'Open').length;
-          int closedCount =
-              _appointments.where((a) => a['status'] == 'Closed').length;
-
-          for (var appt in _appointments) {
-            final scheduledTimeString = appt['scheduled_time'];
-            if (scheduledTimeString != null) {
-              try {
-                final scheduledTime = DateTime.parse(scheduledTimeString);
-                final scheduledDate = DateTime(
-                    scheduledTime.year, scheduledTime.month, scheduledTime.day);
-
-                if (scheduledDate.isAtSameMomentAs(today)) {
-                  todayCount++;
-                }
-
-                if (scheduledTime.isAfter(now)) {
-                  upcomingCount++;
-                }
-
-                if (scheduledTime.isBefore(now) && appt['status'] != 'Closed') {
-                  dueCount++;
-                }
-              } catch (e) {
-                // Ignore if date format is invalid
-              }
-            }
-          }
-
-          // Update the _filters list for the Appointment tab (index 1)
-          _filters[1] = [
-            'All ($allCount)',
-            'Today ($todayCount)',
-            'Due ($dueCount)',
-            'Upcoming ($upcomingCount)',
-            'Open ($openCount)',
-            'Closed ($closedCount)',
-          ];
-          // --- End Count Calculation ---
-        });
-      }
-    } on DioException catch (e) {
-      Get.snackbar(
-          'Error',
-          e.response?.data['message'] ??
-              'An error occurred while fetching appointments');
-    } finally {
-      setState(() {
-        _appointmentsLoading = false;
-      });
-    }
-  }
-
   Widget _buildAppointmentTab() {
     if (_appointmentsLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -656,81 +715,98 @@ class _CrmPageState extends State<CrmPage> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    final List<dynamic> filteredAppointments = _appointments.where((appt) {
-      final status = _currentFilterStatus.split(' (')[0];
-      if (status == 'All') {
-        return true;
-      }
-      if (status == 'Open' || status == 'Closed') {
-        return appt['status'] == status;
-      }
+    final List<Appointment> filteredAppointments = _currentFilterStatus == 'All'
+        ? _appointments
+        : _appointments.where((appt) {
+            final status = _currentFilterStatus.split(' (')[0];
+            if (status == 'All') {
+              return true;
+            }
+            if (status == 'Open' || status == 'Closed') {
+              return appt.status == status;
+            }
 
-      final scheduledTimeString = appt['scheduled_time'];
-      if (scheduledTimeString != null) {
-        try {
-          final scheduledTime = DateTime.parse(scheduledTimeString);
-          final scheduledDate = DateTime(
-              scheduledTime.year, scheduledTime.month, scheduledTime.day);
+            final scheduledTime = appt.scheduledTime;
+            final scheduledDate =
+                DateTime(scheduledTime.year, scheduledTime.month, scheduledTime.day);
 
-          if (status == 'Today') {
-            return scheduledDate.isAtSameMomentAs(today);
-          }
-          if (status == 'Upcoming') {
-            return scheduledTime.isAfter(now);
-          }
-          if (status == 'Due') {
-            return scheduledTime.isBefore(now) && appt['status'] != 'Closed';
-          }
-        } catch (e) {
-          return false; // Don't show if date is invalid
-        }
-      }
-      return false; // Don't show if no scheduled_time for date-based filters
-    }).toList();
+            if (status == 'Today') {
+              return scheduledDate.isAtSameMomentAs(today);
+            }
+            if (status == 'Upcoming') {
+              return scheduledTime.isAfter(now);
+            }
+            if (status == 'Due') {
+              return scheduledTime.isBefore(now) && appt.status != 'Closed';
+            }
+            return false; // Don't show if no scheduled_time for date-based filters
+          }).toList();
 
     if (filteredAppointments.isEmpty) {
       final status = _currentFilterStatus.split(' (')[0];
       return Center(child: Text('No $status Appointments Found'));
     }
 
-    return ListView.builder(
-      itemCount: filteredAppointments.length,
-      itemBuilder: (context, index) {
-        final appointment = filteredAppointments[index];
-        return InkWell(
-          onTap: () {
-            Get.to(() => AppointmentDetailPage(appointment: appointment));
-          },
-          child: Card(
-            margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    appointment['customer_name'] ?? 'N/A',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16.0,
+    return Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            itemCount: filteredAppointments.length,
+            itemBuilder: (context, index) {
+              final appointment = filteredAppointments[index];
+              return InkWell(
+                onTap: () {
+                  Get.to(() => AppointmentDetailPage(
+                      appointmentName: appointment.name!));
+                },
+                child: Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                  child: Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          appointment.customerName,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16.0,
+                          ),
+                        ),
+                        Text('Time: ${appointment.scheduledTime.toString().split('.')[0]}'),
+                        const SizedBox(height: 8.0),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Status: ${appointment.status ?? 'N/A'}'),
+                            Text('Sync Status: ${appointment.syncStatus.name}'),
+                          ],
+                        ),
+                        const SizedBox(height: 8.0),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                              'Modified: ${appointment.lastModified != null ? appointment.lastModified.toString().split(' ')[0] : 'N/A'}'),
+                        ),
+                      ],
                     ),
                   ),
-                  Text('Time: ${appointment['scheduled_time'] ?? 'N/A'}'),
-                  const SizedBox(height: 8.0),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text('Status: ${appointment['status'] ?? 'N/A'}'),
-                      Text(
-                          'Modified: ${appointment['modified'] != null ? appointment['modified'].split(' ')[0] : 'N/A'}'),
-                    ],
-                  ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+        if (_isLoadingMoreAppointments)
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: CircularProgressIndicator(),
+          )
+        else
+          ElevatedButton(
+            onPressed: _loadMoreAppointments,
+            child: const Text('Load More'),
+          ),
+      ],
     );
   }
 
