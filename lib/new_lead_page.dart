@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:frappe_flutter/models/lead_model.dart';
+import 'package:frappe_flutter/models/sync_status.dart';
+import 'package:frappe_flutter/services/isar_service.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart' as dio_package;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -7,7 +10,7 @@ import 'package:frappe_flutter/error_page.dart';
 
 class NewLeadPage extends StatefulWidget {
   final VoidCallback onLeadCreated;
-  final Map<String, dynamic>? initialLeadData;
+  final Lead? initialLeadData;
 
   const NewLeadPage({
     super.key,
@@ -23,6 +26,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
   final _formKey = GlobalKey<FormState>();
   final _dio = dio_package.Dio();
   final _secureStorage = const FlutterSecureStorage();
+  final _isarService = IsarService();
 
   // Form Controllers
   final _firstNameController = TextEditingController();
@@ -61,39 +65,14 @@ class _NewLeadPageState extends State<NewLeadPage> {
     await _fetchProducts();
 
     if (widget.initialLeadData != null) {
-      _firstNameController.text = widget.initialLeadData!['first_name'] ?? '';
-      _phoneController.text = widget.initialLeadData!['mobile_no'] ?? '';
-
-      // Validate and set _selectedStatus
-      final initialStatus = widget.initialLeadData!['status'];
-      if (['Lead', 'Converted', 'Follow Up', 'Not Interested'].contains(initialStatus)) {
-        _selectedStatus = initialStatus;
-      } else {
-        _selectedStatus = null;
-      }
-
-      // Validate and set _selectedSource
-      final initialSource = widget.initialLeadData!['source'];
-      if (_leadSources.any((source) => source['name'] == initialSource)) {
-        _selectedSource = initialSource;
-      } else {
-        _selectedSource = null;
-      }
-
-      // Handle product table if it exists
-      final productTable = widget.initialLeadData!['custom_product_table'];
-      if (productTable != null && productTable.isNotEmpty) {
-        final product = productTable[0];
-        final initialProduct = product['product'];
-        if (_products.any((p) => p['name'] == initialProduct)) {
-          _selectedProduct = initialProduct;
-          _selectedProductName = product['product_name'];
-        } else {
-          _selectedProduct = null;
-          _selectedProductName = null;
-        }
-        _productAmountController.text = product['product_amount']?.toString() ?? '';
-      }
+      final lead = widget.initialLeadData!;
+      _firstNameController.text = lead.firstName;
+      _phoneController.text = lead.mobileNo ?? '';
+      _productAmountController.text = lead.productAmount?.toString() ?? '';
+      _selectedStatus = lead.status;
+      _selectedSource = lead.source;
+      _selectedProduct = lead.product;
+      _selectedProductName = lead.productName;
       setState(() {}); // Trigger rebuild to update dropdowns
     }
   }
@@ -179,85 +158,31 @@ class _NewLeadPageState extends State<NewLeadPage> {
       _isLoading = true;
     });
 
-    try {
-      final sid = await _secureStorage.read(key: 'sid');
-      if (sid == null) {
-        Get.snackbar('Error', 'Session expired. Please log in again.');
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
+    final isUpdating = widget.initialLeadData != null;
 
-      final isUpdating = widget.initialLeadData != null;
-      final String apiUrl;
-      final String successMessage;
-      final String errorMessage;
-      final String requestMethod;
+    final lead = isUpdating ? widget.initialLeadData! : Lead();
 
-      if (isUpdating) {
-        final leadName = widget.initialLeadData!['name'];
-        apiUrl = 'https://mysahayog.com/api/resource/Lead/$leadName';
-        successMessage = 'Lead updated successfully';
-        errorMessage = 'Failed to update lead';
-        requestMethod = 'PUT'; // Frappe uses PUT for updates
-      } else {
-        apiUrl = 'https://mysahayog.com/api/resource/Lead';
-        successMessage = 'Lead created successfully';
-        errorMessage = 'Failed to create lead';
-        requestMethod = 'POST';
-      }
+    lead
+      ..firstName = _firstNameController.text
+      ..mobileNo = _phoneController.text
+      ..status = _selectedStatus
+      ..source = _selectedSource
+      ..product = _selectedProduct
+      ..productName = _selectedProductName
+      ..productAmount = double.tryParse(_productAmountController.text) ?? 0.0
+      ..syncStatus = SyncStatus.pending
+      ..lastModified = DateTime.now();
 
-      final leadData = {
-        'doctype': 'Lead',
-        'first_name': _firstNameController.text,
-        'mobile_no': _phoneController.text,
-        'status': _selectedStatus,
-        'source': _selectedSource,
-        'custom_product_table': [
-          {
-            'product': _selectedProduct,
-            'product_name': _selectedProductName,
-            'product_amount': _productAmountController.text,
-          }
-        ]
-      };
+    await _isarService.saveLead(lead);
 
-      dio_package.Response response; // Specify Dio's Response
-      if (requestMethod == 'PUT') {
-        response = await _dio.put(
-          apiUrl,
-          data: leadData,
-          options: dio_package.Options(
-            headers: {'Cookie': 'sid=$sid'},
-            contentType: 'application/json',
-          ),
-        );
-      } else {
-        response = await _dio.post(
-          apiUrl,
-          data: leadData,
-          options: dio_package.Options(
-            headers: {'Cookie': 'sid=$sid'},
-            contentType: 'application/json',
-          ),
-        );
-      }
+    widget.onLeadCreated();
+    Get.back(result: true);
+    Get.snackbar(
+        'Success', isUpdating ? 'Lead updated locally.' : 'Lead saved locally.');
 
-      if (response.statusCode == 200) {
-        widget.onLeadCreated(); // This callback will now also act as onLeadUpdated
-        Get.back();
-        Get.snackbar('Success', successMessage);
-      } else {
-        Get.snackbar('Error', '$errorMessage: ${response.statusMessage}');
-      }
-        } on dio_package.DioException catch (e) {
-          Get.offAll(() => ErrorPage(errorMessage: e.response?.data?['message'] ?? 'Failed to save lead. Contact admin.'));
-        } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override

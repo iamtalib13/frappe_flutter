@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:frappe_flutter/models/lead_model.dart';
+import 'package:frappe_flutter/services/isar_service.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -14,9 +16,8 @@ class LeadDetailPage extends StatefulWidget {
 }
 
 class _LeadDetailPageState extends State<LeadDetailPage> {
-  final Dio _dio = Dio();
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
-  Map<String, dynamic>? _leadDetails;
+  final IsarService _isarService = IsarService();
+  Lead? _leadDetails;
   bool _isLoading = true;
   String _errorMessage = '';
 
@@ -33,33 +34,16 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
     });
 
     try {
-      final sid = await _secureStorage.read(key: 'sid');
-      if (sid == null) {
-        Get.snackbar('Error', 'Session expired. Please log in again.');
+      final lead = await _isarService.getLeadByName(widget.leadName);
+      if (lead != null) {
         setState(() {
-          _isLoading = false;
-          _errorMessage = 'Session expired.';
-        });
-        return;
-      }
-
-      final response = await _dio.get(
-        'https://mysahayog.com/api/resource/Lead/${widget.leadName}',
-        options: Options(
-          headers: {'Cookie': 'sid=$sid'},
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _leadDetails = response.data['data'];
+          _leadDetails = lead;
         });
       } else {
-        _errorMessage = 'Failed to fetch lead details: ${response.statusCode}';
+        _errorMessage = 'Failed to fetch lead details';
       }
-    } on DioException catch (e) {
-      _errorMessage = e.response?.data['message'] ??
-          'An error occurred while fetching lead details';
+    } catch (e) {
+      _errorMessage = 'An error occurred while fetching lead details';
     } finally {
       setState(() {
         _isLoading = false;
@@ -73,7 +57,7 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
       appBar: AppBar(
         title: Text(_isLoading || _leadDetails == null
             ? 'Lead Details'
-            : _leadDetails!['first_name'] ?? 'Lead Details'),
+            : _leadDetails!.firstName),
         backgroundColor: const Color(0xFF006767),
       ),
       body: _isLoading
@@ -114,11 +98,14 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
           ? FloatingActionButton.extended(
               onPressed: () async {
                 if (_leadDetails != null) {
-                  await Get.to(() => NewLeadPage(
-                    initialLeadData: _leadDetails!,
-                    onLeadCreated: _fetchLeadDetails, // Use _fetchLeadDetails as callback for update
-                  ));
-                  _fetchLeadDetails(); // Refresh details after returning from NewLeadPage
+                  final result = await Get.to(() => NewLeadPage(
+                        initialLeadData: _leadDetails,
+                        onLeadCreated:
+                            () {}, // This is not used anymore, but it is required
+                      ));
+                  if (result == true) {
+                    _fetchLeadDetails();
+                  }
                 }
               },
               label: const Text('Update Lead'),
@@ -137,11 +124,10 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildDetailRow('Lead Name', _leadDetails!['first_name']),
-            _buildDetailRow('Status', _leadDetails!['status']),
-            _buildDetailRow('Branch', _leadDetails!['custom_branch']),
-            _buildDetailRow('Source', _leadDetails!['source']),
-            _buildDetailRow('Mobile No', _leadDetails!['mobile_no']),
+            _buildDetailRow('Lead Name', _leadDetails!.firstName),
+            _buildDetailRow('Status', _leadDetails!.status),
+            _buildDetailRow('Source', _leadDetails!.source),
+            _buildDetailRow('Mobile No', _leadDetails!.mobileNo),
           ],
         ),
       ),
@@ -149,31 +135,24 @@ class _LeadDetailPageState extends State<LeadDetailPage> {
   }
 
   Widget _buildProductTab() {
-    final List<dynamic>? products = _leadDetails!['custom_product_table'];
-
-    if (products == null || products.isEmpty) {
+    if (_leadDetails!.productName == null) {
       return const Center(
           child: Text('No products associated with this lead.'));
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: products.map((product) {
-        final amount = (product['product_amount'] ?? 0.0) as num;
-        return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4.0),
-          child: Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildDetailRow('Product Name', product['product_name']),
-                _buildDetailRow('Amount', amount.toStringAsFixed(2)),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow('Product Name', _leadDetails!.productName),
+            _buildDetailRow(
+                'Amount', _leadDetails!.productAmount!.toStringAsFixed(2)),
+          ],
+        ),
+      ),
     );
   }
 

@@ -2,11 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get/get.dart';
 import 'package:dio/dio.dart';
+import 'package:isar/isar.dart'; // New import
+import 'package:frappe_flutter/models/lead_model.dart'; // New import for Isar model
+import 'package:path_provider/path_provider.dart'; // New import for path
 
 import 'home_page.dart';
 import 'login_page.dart';
 
-void main() {
+late Isar isar; // Global Isar instance
+
+void main() async { // main needs to be async
+  WidgetsFlutterBinding.ensureInitialized(); // Ensure Flutter binding is initialized
+  final dir = await getApplicationDocumentsDirectory(); // Get application documents directory
+  isar = await Isar.open( // Open Isar instance
+    [LeadSchema], // List of all Isar collections (schemas)
+    directory: dir.path,
+    inspector: true, // Enable Isar inspector for debugging
+  );
+
   runApp(const MyApp());
 }
 
