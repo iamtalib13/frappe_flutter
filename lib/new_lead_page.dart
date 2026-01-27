@@ -160,9 +160,9 @@ class _NewLeadPageState extends State<NewLeadPage> {
 
     final isUpdating = widget.initialLeadData != null;
 
-    final lead = isUpdating ? widget.initialLeadData! : Lead();
+    final leadToSave = isUpdating ? widget.initialLeadData! : Lead();
 
-    lead
+    leadToSave
       ..firstName = _firstNameController.text
       ..mobileNo = _phoneController.text
       ..status = _selectedStatus
@@ -173,7 +173,7 @@ class _NewLeadPageState extends State<NewLeadPage> {
       ..syncStatus = SyncStatus.pending
       ..lastModified = DateTime.now();
 
-    await _isarService.saveLead(lead);
+    await _isarService.saveLead(leadToSave);
 
     widget.onLeadCreated();
     Get.back(result: true);

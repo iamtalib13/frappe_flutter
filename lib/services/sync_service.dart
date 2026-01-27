@@ -38,14 +38,38 @@ class SyncService {
           ]
         };
 
-        final response = await _dio.post(
-          'https://mysahayog.com/api/resource/Lead',
-          data: leadData,
-          options: dio_package.Options(
-            headers: {'Cookie': 'sid=$sid'},
-            contentType: 'application/json',
-          ),
-        );
+        final isUpdating = lead.name != null;
+        final String apiUrl;
+        final String requestMethod;
+
+        if (isUpdating) {
+          apiUrl = 'https://mysahayog.com/api/resource/Lead/${lead.name}';
+          requestMethod = 'PUT';
+        } else {
+          apiUrl = 'https://mysahayog.com/api/resource/Lead';
+          requestMethod = 'POST';
+        }
+
+        dio_package.Response response;
+        if (requestMethod == 'PUT') {
+          response = await _dio.put(
+            apiUrl,
+            data: leadData,
+            options: dio_package.Options(
+              headers: {'Cookie': 'sid=$sid'},
+              contentType: 'application/json',
+            ),
+          );
+        } else {
+          response = await _dio.post(
+            apiUrl,
+            data: leadData,
+            options: dio_package.Options(
+              headers: {'Cookie': 'sid=$sid'},
+              contentType: 'application/json',
+            ),
+          );
+        }
 
         if (response.statusCode == 200) {
           lead.syncStatus = SyncStatus.synced;
@@ -85,14 +109,38 @@ class SyncService {
           'party': appointment.customerName, // Assuming party is customerName
         };
 
-        final response = await _dio.post(
-          'https://mysahayog.com/api/resource/Appointment',
-          data: appointmentData,
-          options: dio_package.Options(
-            headers: {'Cookie': 'sid=$sid'},
-            contentType: 'application/json',
-          ),
-        );
+        final isUpdating = appointment.name != null;
+        final String apiUrl;
+        final String requestMethod;
+
+        if (isUpdating) {
+          apiUrl = 'https://mysahayog.com/api/resource/Appointment/${appointment.name}';
+          requestMethod = 'PUT';
+        } else {
+          apiUrl = 'https://mysahayog.com/api/resource/Appointment';
+          requestMethod = 'POST';
+        }
+
+        dio_package.Response response;
+        if (requestMethod == 'PUT') {
+          response = await _dio.put(
+            apiUrl,
+            data: appointmentData,
+            options: dio_package.Options(
+              headers: {'Cookie': 'sid=$sid'},
+              contentType: 'application/json',
+            ),
+          );
+        } else {
+          response = await _dio.post(
+            apiUrl,
+            data: appointmentData,
+            options: dio_package.Options(
+              headers: {'Cookie': 'sid=$sid'},
+              contentType: 'application/json',
+            ),
+          );
+        }
 
         if (response.statusCode == 200) {
           appointment.syncStatus = SyncStatus.synced;

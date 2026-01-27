@@ -104,16 +104,16 @@ class _NewAppointmentPageState extends State<NewAppointmentPage> {
       });
 
       final isUpdating = widget.initialAppointmentData != null;
-      final appointment = isUpdating ? widget.initialAppointmentData! : Appointment();
+      final appointmentToSave = isUpdating ? widget.initialAppointmentData! : Appointment();
 
-      appointment
+      appointmentToSave
         ..customerName = _selectedLead!
         ..scheduledTime = DateTime.parse(_scheduledTimeController.text)
         ..status = _selectedStatus
         ..syncStatus = SyncStatus.pending
         ..lastModified = DateTime.now();
 
-      await _isarService.saveAppointment(appointment);
+      await _isarService.saveAppointment(appointmentToSave);
 
       widget.onAppointmentCreated?.call();
       Get.back(result: true);
