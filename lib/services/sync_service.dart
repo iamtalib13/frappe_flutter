@@ -1,9 +1,11 @@
 import 'package:dio/dio.dart' as dio_package;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:frappe_flutter/models/lead_model.dart';
+import 'package:frappe_flutter/models/appointment_model.dart';
 import 'package:frappe_flutter/models/sync_status.dart';
 import 'package:frappe_flutter/services/isar_service.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 
 class SyncService {
   final _isarService = IsarService();
@@ -56,6 +58,53 @@ class SyncService {
       } catch (e) {
         lead.syncStatus = SyncStatus.failed;
         await _isarService.saveLead(lead);
+        // Optionally, log the error
+      }
+    }
+  }
+
+  Future<void> syncPendingAppointments() async {
+    final pendingAppointments =
+        await _isarService.getAppointmentsBySyncStatus(SyncStatus.pending);
+
+    for (var appointment in pendingAppointments) {
+      try {
+        final sid = await _secureStorage.read(key: 'sid');
+        if (sid == null) {
+          // Handle session expiry
+          return;
+        }
+
+        final appointmentData = {
+          'doctype': 'Appointment',
+          'customer_name': appointment.customerName,
+          'scheduled_time':
+              DateFormat('yyyy-MM-dd HH:mm:ss').format(appointment.scheduledTime),
+          'status': appointment.status,
+          'appointment_with': 'Lead', // Assuming always with a Lead
+          'party': appointment.customerName, // Assuming party is customerName
+        };
+
+        final response = await _dio.post(
+          'https://mysahayog.com/api/resource/Appointment',
+          data: appointmentData,
+          options: dio_package.Options(
+            headers: {'Cookie': 'sid=$sid'},
+            contentType: 'application/json',
+          ),
+        );
+
+        if (response.statusCode == 200) {
+          appointment.syncStatus = SyncStatus.synced;
+          appointment.name = response.data['data']['name'];
+          await _isarService.saveAppointment(appointment);
+        } else {
+          appointment.syncStatus = SyncStatus.failed;
+          await _isarService.saveAppointment(appointment);
+        }
+      } catch (e) {
+        appointment.syncStatus = SyncStatus.failed;
+        await _isarService.saveAppointment(appointment);
         // Optionally, log the error
       }
     }

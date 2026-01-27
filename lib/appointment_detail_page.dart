@@ -3,27 +3,27 @@ import 'package:get/get.dart'; // Add Get for navigation
 import 'package:dio/dio.dart'; // Add Dio for fetching updated data
 import 'package:flutter_secure_storage/flutter_secure_storage.dart'; // Add for secure storage
 import 'package:frappe_flutter/new_appointment_page.dart'; // Import new_appointment_page.dart
+import 'package:frappe_flutter/models/appointment_model.dart';
+import 'package:frappe_flutter/services/isar_service.dart';
 
 class AppointmentDetailPage extends StatefulWidget {
-  final Map<String, dynamic> appointment;
+  final String appointmentName;
 
-  const AppointmentDetailPage({super.key, required this.appointment});
+  const AppointmentDetailPage({super.key, required this.appointmentName});
 
   @override
   State<AppointmentDetailPage> createState() => _AppointmentDetailPageState();
 }
 
 class _AppointmentDetailPageState extends State<AppointmentDetailPage> {
-  final Dio _dio = Dio(); // New
-  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(); // New
-  Map<String, dynamic>? _appointmentDetails; // New, to store fetched details
+  final IsarService _isarService = IsarService();
+  Appointment? _appointmentDetails; // New, to store fetched details
   bool _isLoading = true; // New
   String _errorMessage = ''; // New
 
   @override
   void initState() {
     super.initState();
-    _appointmentDetails = widget.appointment; // Initialize with passed data
     _fetchAppointmentDetails(); // Fetch details to ensure they are up-to-date
   }
 
@@ -34,32 +34,16 @@ class _AppointmentDetailPageState extends State<AppointmentDetailPage> {
     });
 
     try {
-      final sid = await _secureStorage.read(key: 'sid');
-      if (sid == null) {
-        Get.snackbar('Error', 'Session expired. Please log in again.');
+      final appointment = await _isarService.getAppointmentByName(widget.appointmentName);
+      if (appointment != null) {
         setState(() {
-          _isLoading = false;
-          _errorMessage = 'Session expired.';
-        });
-        return;
-      }
-
-      final response = await _dio.get(
-        'https://mysahayog.com/api/resource/Appointment/${_appointmentDetails!['name']}',
-        options: Options(
-          headers: {'Cookie': 'sid=$sid'},
-        ),
-      );
-
-      if (response.statusCode == 200) {
-        setState(() {
-          _appointmentDetails = response.data['data'];
+          _appointmentDetails = appointment;
         });
       } else {
-        _errorMessage = 'Failed to fetch appointment details: ${response.statusCode}';
+        _errorMessage = 'Failed to fetch appointment details';
       }
-    } on DioException catch (e) {
-      _errorMessage = e.response?.data['message'] ?? 'An error occurred while fetching appointment details';
+    } catch (e) {
+      _errorMessage = 'An error occurred while fetching appointment details';
     } finally {
       setState(() {
         _isLoading = false;
@@ -73,7 +57,7 @@ class _AppointmentDetailPageState extends State<AppointmentDetailPage> {
       appBar: AppBar(
         title: Text(_isLoading || _appointmentDetails == null
             ? 'Appointment Details'
-            : _appointmentDetails!['customer_name'] ?? 'Appointment Details'),
+            : _appointmentDetails!.customerName),
         backgroundColor: const Color(0xFF006767),
       ),
       body: _isLoading
@@ -90,10 +74,10 @@ class _AppointmentDetailPageState extends State<AppointmentDetailPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildDetailRow('Customer', _appointmentDetails!['customer_name']),
-                              _buildDetailRow('Scheduled Time', _appointmentDetails!['scheduled_time']),
-                              _buildDetailRow('Status', _appointmentDetails!['status']),
-                              _buildDetailRow('Last Modified', _appointmentDetails!['modified']?.split(' ')[0]),
+                              _buildDetailRow('Customer', _appointmentDetails!.customerName),
+                              _buildDetailRow('Scheduled Time', _appointmentDetails!.scheduledTime.toString()),
+                              _buildDetailRow('Status', _appointmentDetails!.status),
+                              _buildDetailRow('Last Modified', _appointmentDetails!.lastModified?.toString().split(' ')[0]),
                             ],
                           ),
                         ),
@@ -103,11 +87,14 @@ class _AppointmentDetailPageState extends State<AppointmentDetailPage> {
           ? FloatingActionButton.extended(
               onPressed: () async {
                 if (_appointmentDetails != null) {
-                  await Get.to(() => NewAppointmentPage(
-                    initialAppointmentData: _appointmentDetails!,
-                    onAppointmentCreated: _fetchAppointmentDetails, // Use _fetchAppointmentDetails as callback
-                  ));
-                  _fetchAppointmentDetails(); // Refresh details after returning
+                  final result = await Get.to(() => NewAppointmentPage(
+                        initialAppointmentData: _appointmentDetails,
+                        onAppointmentCreated:
+                            () {}, // This is not used anymore, but it is required
+                      ));
+                  if (result == true) {
+                    _fetchAppointmentDetails();
+                  }
                 }
               },
               label: const Text('Update Appointment'),

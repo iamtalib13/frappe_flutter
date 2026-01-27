@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:dio/dio.dart';
 import 'package:isar/isar.dart'; // New import
 import 'package:frappe_flutter/models/lead_model.dart'; // New import for Isar model
+import 'package:frappe_flutter/models/appointment_model.dart'; // New import for Isar model
 import 'package:path_provider/path_provider.dart'; // New import for path
 
 import 'home_page.dart';
@@ -15,7 +16,7 @@ void main() async { // main needs to be async
   WidgetsFlutterBinding.ensureInitialized(); // Ensure Flutter binding is initialized
   final dir = await getApplicationDocumentsDirectory(); // Get application documents directory
   isar = await Isar.open( // Open Isar instance
-    [LeadSchema], // List of all Isar collections (schemas)
+    [LeadSchema, AppointmentSchema], // List of all Isar collections (schemas)
     directory: dir.path,
     inspector: true, // Enable Isar inspector for debugging
   );
